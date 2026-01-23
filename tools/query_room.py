@@ -10,207 +10,150 @@ if parent_dir not in sys.path:
 from .mcp_context import mcp
 from tools.load_model import manager
 
+
+def _get_nested_attr(obj, attr_path):
+    """
+    Safely retrieves a nested attribute from an object using a dot-separated path.
+    Returns None if any part of the chain is missing.
+    """
+    try:
+        attributes = attr_path.split('.')
+        current = obj
+        for attr in attributes:
+            if current is None:
+                return None
+            if attr == '__class__':
+                current = current.__class__
+            elif attr == '__name__':
+                current = current.__name__
+            else:
+                current = getattr(current, attr, None)
+        return current
+    except Exception:
+        return None
+
+
 @mcp.tool()
-def query_rooms(
-    room_identifiers: list,
-    identifier: bool = False,
-    display_name: bool = False,
-    faces: bool = False,
-    multiplier: bool = False,
-    zone: bool = False,
-    story: bool = False,
-    exclude_floor_area: bool = False,
-    indoor_furniture: bool = False,
-    indoor_shades: bool = False,
-    outdoor_shades: bool = False,
-    walls: bool = False,
-    floors: bool = False,
-    roof_ceilings: bool = False,
-    air_boundaries: bool = False,
-    sub_faces: bool = False,
-    doors: bool = False,
-    apertures: bool = False,
-    exterior_apertures: bool = False,
-    floor_area: bool = False,
-    exposed_area: bool = False,
-    exterior_wall_area: bool = False,
-    exterior_aperture_area: bool = False,
-    exterior_wall_aperture_area: bool = False,
-    exterior_skylight_aperture_area: bool = False,
-    average_floor_height: bool = False,
-    return_count: bool = False
+def query_room(
+    room_identifiers: list[str] = None,
+    general_properties: bool = False,
+    load_properties: bool = False,
+    schedule_properties: bool = False,
+    setpoint_properties: bool = False,
+    hvac_properties: bool = False,
+    radiance_properties: bool = False
 ) -> dict:
     """
-    Query various properties for multiple rooms.
+    Query detailed Energy and Radiance attributes for specific rooms.
+    
+    Args:
+        room_identifiers: List of room IDs to query. If None, queries all rooms.
+        general_properties: Includes Program, Construction Set, Is Conditioned.
+        load_properties: Includes People, Lighting, Equipment, Ventilation, Infiltration densities.
+        schedule_properties: Includes all operation schedules (Occupancy, Lighting, HVAC, etc.).
+        setpoint_properties: Includes Heating/Cooling setpoints, setbacks, and humidity thresholds.
+        hvac_properties: Includes HVAC type, system names, efficiencies, and SHW.
+        radiance_properties: Includes Modifier Set.
     """
-    result = {}
+    if not manager.model:
+        raise ValueError("Model is not loaded.")
 
-    # Process each room identifier in the list
-    for room_identifier in room_identifiers:
-        # Search for room in model's rooms collection
-        room = None
-        for r in manager.model.rooms:
-            if r.identifier == room_identifier:
-                room = r
-                break
+    # Determine target rooms
+    target_rooms = []
+    if room_identifiers:
+        room_map = {r.identifier: r for r in manager.model.rooms}
+        for r_id in room_identifiers:
+            if r_id in room_map:
+                target_rooms.append(room_map[r_id])
+    else:
+        target_rooms = list(manager.model.rooms)
 
-        # Handle case where room is not found
-        if room is None:
-            result[room_identifier] = {"error": f"Room with identifier '{room_identifier}' not found"}
-            continue
+    results = {}
 
-        # Build result dictionary for this room
-        room_result = {}
+    for room in target_rooms:
+        room_data = {}
 
-        # Query identifier if requested
-        if identifier:
-            room_result["identifier"] = room.identifier
+        # 1. General Energy Properties
+        if general_properties:
+            room_data.update({
+                "program_type": _get_nested_attr(room, "properties.energy.program_type.display_name"),
+                "construction_set": _get_nested_attr(room, "properties.energy.construction_set.display_name"),
+                "is_conditioned": _get_nested_attr(room, "properties.energy.is_conditioned")
+            })
 
-        # Query display name if requested
-        if display_name:
-            room_result["display_name"] = room.display_name
+        # 2. Load Properties (Densities & Flow)
+        if load_properties:
+            room_data.update({
+                "people_per_area": _get_nested_attr(room, "properties.energy.people.people_per_area"),
+                "area_per_person": _get_nested_attr(room, "properties.energy.people.area_per_person"),
+                "lighting_per_area": _get_nested_attr(room, "properties.energy.lighting.watts_per_area"),
+                "electric_equipment_per_area": _get_nested_attr(room, "properties.energy.electric_equipment.watts_per_area"),
+                "gas_equipment_per_area": _get_nested_attr(room, "properties.energy.gas_equipment.watts_per_area"),
+                "hot_water_per_area": _get_nested_attr(room, "properties.energy.service_hot_water.flow_per_area"),
+                "infiltration_per_ext_area": _get_nested_attr(room, "properties.energy.infiltration.flow_per_exterior_area"),
+                "ventilation_per_person": _get_nested_attr(room, "properties.energy.ventilation.flow_per_person"),
+                "ventilation_per_area": _get_nested_attr(room, "properties.energy.ventilation.flow_per_area"),
+                "ventilation_ach": _get_nested_attr(room, "properties.energy.ventilation.air_changes_per_hour"),
+                "ventilation_absolute": _get_nested_attr(room, "properties.energy.ventilation.flow_per_zone"),
+                "total_fan_flow": _get_nested_attr(room, "properties.energy.total_fan_flow"),
+                "total_process_load": _get_nested_attr(room, "properties.energy.total_process_load")
+            })
 
-        # Query faces if requested
-        if faces:
-            faces_list = room.faces
-            if return_count:
-                room_result["faces"] = {"count": len(faces_list)}
-            else:
-                room_result["faces"] = {"identifiers": [face.identifier for face in faces_list]}
+        # 3. Schedule Properties
+        if schedule_properties:
+            room_data.update({
+                "occupancy_schedule": _get_nested_attr(room, "properties.energy.people.occupancy_schedule.display_name"),
+                "activity_schedule": _get_nested_attr(room, "properties.energy.people.activity_schedule.display_name"),
+                "lighting_schedule": _get_nested_attr(room, "properties.energy.lighting.schedule.display_name"),
+                "electric_equipment_schedule": _get_nested_attr(room, "properties.energy.electric_equipment.schedule.display_name"),
+                "gas_equipment_schedule": _get_nested_attr(room, "properties.energy.gas_equipment.schedule.display_name"),
+                "hot_water_schedule": _get_nested_attr(room, "properties.energy.service_hot_water.schedule.display_name"),
+                "infiltration_schedule": _get_nested_attr(room, "properties.energy.infiltration.schedule.display_name"),
+                "ventilation_schedule": _get_nested_attr(room, "properties.energy.ventilation.schedule.display_name"),
+                "heating_schedule": _get_nested_attr(room, "properties.energy.setpoint.heating_schedule.display_name"),
+                "cooling_schedule": _get_nested_attr(room, "properties.energy.setpoint.cooling_schedule.display_name")
+            })
 
-        # Query multiplier if requested
-        if multiplier:
-            room_result["multiplier"] = room.multiplier
+        # 4. Setpoint Properties
+        if setpoint_properties:
+            room_data.update({
+                "heating_setpoint": _get_nested_attr(room, "properties.energy.setpoint.heating_setpoint"),
+                "cooling_setpoint": _get_nested_attr(room, "properties.energy.setpoint.cooling_setpoint"),
+                "heating_setback": _get_nested_attr(room, "properties.energy.setpoint.heating_setback"),
+                "cooling_setback": _get_nested_attr(room, "properties.energy.setpoint.cooling_setback"),
+                "humidifying_setpoint": _get_nested_attr(room, "properties.energy.setpoint.humidifying_setpoint"),
+                "dehumidifying_setpoint": _get_nested_attr(room, "properties.energy.setpoint.dehumidifying_setpoint")
+            })
 
-        # Query zone if requested
-        if zone:
-            room_result["zone"] = room.zone
+        # 5. HVAC & SHW Properties
+        if hvac_properties:
+            room_data.update({
+                "hvac_type": _get_nested_attr(room, "properties.energy.hvac.__class__.__name__"),
+                "hvac_equipment_type": _get_nested_attr(room, "properties.energy.hvac.equipment_type"),
+                "hvac_name": _get_nested_attr(room, "properties.energy.hvac.display_name"),
+                "economizer_type": _get_nested_attr(room, "properties.energy.hvac.economizer_type"),
+                "demand_controlled_ventilation": _get_nested_attr(room, "properties.energy.hvac.demand_controlled_ventilation"),
+                "sensible_heat_recovery": _get_nested_attr(room, "properties.energy.hvac.sensible_heat_recovery"),
+                "latent_heat_recovery": _get_nested_attr(room, "properties.energy.hvac.latent_heat_recovery"),
+                "shw_equipment_type": _get_nested_attr(room, "properties.energy.shw.equipment_type"),
+                "shw_heater_efficiency": _get_nested_attr(room, "properties.energy.shw.heater_efficiency"),
+                "shw_ambient_condition": _get_nested_attr(room, "properties.energy.shw.ambient_condition"),
+                "shw_ambient_loss_coefficient": _get_nested_attr(room, "properties.energy.shw.ambient_loss_coefficient"),
+                "daylight_illuminance_setpoint": _get_nested_attr(room, "properties.energy.daylighting_control.illuminance_setpoint"),
+                "daylight_sensor_position": _get_nested_attr(room, "properties.energy.daylighting_control.sensor_position")
+            })
 
-        # Query story if requested
-        if story:
-            room_result["story"] = room.story
+        # 6. Radiance Properties
+        if radiance_properties:
+            room_data.update({
+                "modifier_set": _get_nested_attr(room, "properties.radiance.modifier_set.display_name")
+            })
 
-        # Query exclude floor area if requested
-        if exclude_floor_area:
-            room_result["exclude_floor_area"] = room.exclude_floor_area
+        if room_data:
+            results[room.identifier] = room_data
 
-        # Query indoor furniture if requested
-        if indoor_furniture:
-            indoor_furniture_list = room.indoor_furniture
-            if return_count:
-                room_result["indoor_furniture"] = {"count": len(indoor_furniture_list)}
-            else:
-                room_result["indoor_furniture"] = {"identifiers": [furniture.identifier for furniture in indoor_furniture_list]}
-
-        # Query indoor shades if requested
-        if indoor_shades:
-            indoor_shades_list = room.indoor_shades
-            if return_count:
-                room_result["indoor_shades"] = {"count": len(indoor_shades_list)}
-            else:
-                room_result["indoor_shades"] = {"identifiers": [shade.identifier for shade in indoor_shades_list]}
-
-        # Query outdoor shades if requested
-        if outdoor_shades:
-            outdoor_shades_list = room.outdoor_shades
-            if return_count:
-                room_result["outdoor_shades"] = {"count": len(outdoor_shades_list)}
-            else:
-                room_result["outdoor_shades"] = {"identifiers": [shade.identifier for shade in outdoor_shades_list]}
-
-        # Query walls if requested
-        if walls:
-            walls_list = room.walls
-            if return_count:
-                room_result["walls"] = {"count": len(walls_list)}
-            else:
-                room_result["walls"] = {"identifiers": [wall.identifier for wall in walls_list]}
-
-        # Query floors if requested
-        if floors:
-            floors_list = room.floors
-            if return_count:
-                room_result["floors"] = {"count": len(floors_list)}
-            else:
-                room_result["floors"] = {"identifiers": [floor.identifier for floor in floors_list]}
-
-        # Query roof ceilings if requested
-        if roof_ceilings:
-            roof_ceilings_list = room.roof_ceilings
-            if return_count:
-                room_result["roof_ceilings"] = {"count": len(roof_ceilings_list)}
-            else:
-                room_result["roof_ceilings"] = {"identifiers": [roof.identifier for roof in roof_ceilings_list]}
-
-        # Query air boundaries if requested
-        if air_boundaries:
-            air_boundaries_list = room.air_boundaries
-            if return_count:
-                room_result["air_boundaries"] = {"count": len(air_boundaries_list)}
-            else:
-                room_result["air_boundaries"] = {"identifiers": [boundary.identifier for boundary in air_boundaries_list]}
-
-        # Query sub-faces if requested
-        if sub_faces:
-            sub_faces_list = room.sub_faces
-            if return_count:
-                room_result["sub_faces"] = {"count": len(sub_faces_list)}
-            else:
-                room_result["sub_faces"] = {"identifiers": [face.identifier for face in sub_faces_list]}
-
-        # Query doors if requested
-        if doors:
-            doors_list = room.doors
-            if return_count:
-                room_result["doors"] = {"count": len(doors_list)}
-            else:
-                room_result["doors"] = {"identifiers": [door.identifier for door in doors_list]}
-
-        # Query apertures if requested
-        if apertures:
-            apertures_list = room.apertures
-            if return_count:
-                room_result["apertures"] = {"count": len(apertures_list)}
-            else:
-                room_result["apertures"] = {"identifiers": [aperture.identifier for aperture in apertures_list]}
-
-        # Query exterior apertures if requested
-        if exterior_apertures:
-            exterior_apertures_list = room.exterior_apertures
-            if return_count:
-                room_result["exterior_apertures"] = {"count": len(exterior_apertures_list)}
-            else:
-                room_result["exterior_apertures"] = {"identifiers": [aperture.identifier for aperture in exterior_apertures_list]}
-
-        # Query floor area if requested
-        if floor_area:
-            room_result["floor_area"] = room.floor_area
-
-        # Query exposed area if requested
-        if exposed_area:
-            room_result["exposed_area"] = room.exposed_area
-
-        # Query exterior wall area if requested
-        if exterior_wall_area:
-            room_result["exterior_wall_area"] = room.exterior_wall_area
-
-        # Query exterior aperture area if requested
-        if exterior_aperture_area:
-            room_result["exterior_aperture_area"] = room.exterior_aperture_area
-
-        # Query exterior wall aperture area if requested
-        if exterior_wall_aperture_area:
-            room_result["exterior_wall_aperture_area"] = room.exterior_wall_aperture_area
-
-        # Query skylight aperture area if requested
-        if exterior_skylight_aperture_area:
-            room_result["exterior_skylight_aperture_area"] = room.exterior_skylight_aperture_area
-
-        # Query average floor height if requested
-        if average_floor_height:
-            room_result["average_floor_height"] = room.average_floor_height
-
-        # Add room results to main result dictionary
-        result[room_identifier] = room_result
-
-    return result
+    return {
+        "status": "success",
+        "room_count": len(results),
+        "data": results
+    }

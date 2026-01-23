@@ -102,3 +102,9 @@ The repository is structured to separate the MCP protocol logic from the Honeybe
 | query_apertures | Query aperture properties |
 | query_doors | Query door properties |
 | query_shades | Query shade properties |
+| apply_opaque_attributes | Apply Opaque Constructions (Energy) or Modifiers (Radiance) to faces, doors, or exterior walls |
+| apply_window_attributes | Apply Window Constructions (Energy) or Modifiers (Radiance) to apertures, glass doors, or child apertures |
+| apply_shade_attributes | Apply Shade Constructions (Energy) or Modifiers (Radiance) to shades or attached objects |
+| apply_hvac | Apply HVAC systems (Ideal, AllAir, DOAS, HeatCool, SHW) to rooms with advanced Radiant configuration |
+| apply_room_attributes | Apply Construction Set, Modifier Set, Program Type, or conditioning status to rooms |
+| search_properties | Search for Constructions, Modifiers, Program Types, and Construction Sets in library |
