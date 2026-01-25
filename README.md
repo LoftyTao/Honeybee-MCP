@@ -1,8 +1,10 @@
 # Honeybee-MCP(beta)
 
-Honeybee-MCP is a sophisticated Model Context Protocol (MCP) server designed to bridge the gap between Large Language Models (LLMs) and the Honeybee ecosystem for building energy modeling (BEM). 
+<img src="src\resource\Honeybee-MCP.png" alt="Honeybee-MCP" width="150">
 
-## Project Overview
+## What is Honeybee-MCP?
+
+Honeybee-MCP is a sophisticated Model Context Protocol (MCP) server designed to bridge the gap between Large Language Models (LLMs) and the Honeybee ecosystem for building energy modeling (BEM). 
 
 The primary objective of Honeybee-MCP is to provide a seamless integration layer for manipulating HBJSON and HBpkl files within AI-augmented design environments. It abstracts the underlying complexities of the honeybee-core libraries, offering a set of high-level tools that allow an AI to "understand" and "modify" 3D building models. 
 
@@ -14,70 +16,171 @@ To ensure stability and performance, the server requires Python 3.8 or higher. I
 
 ### Installation Procedure
 
-The installation process follows standard Pythonic practices to ensure environment isolation:
+We recommend using **uv**, a fast and modern Python package manager that significantly speeds up dependency resolution and installation.
 
-Environment Setup: Initialize a virtual environment to manage dependencies:
+#### Option 1: Using uv (Recommended)
+
+1. Install uv (if not already installed):
+
+```
+pip install uv
+```
+
+2. Navigate to the project directory:
+
+```
+cd path/to/Honeybee-MCP
+```
+
+3. Create a virtual environment in the project folder:
+
+```
+uv venv
+```
+
+4. Install dependencies:
+
+```
+uv pip install -r requirements.txt
+```
+
+5. Activate the environment:
+
+Windows:
+```
+.venv\Scripts\activate
+```
+
+Unix/macOS:
+```
+source .venv/bin/activate
+```
+
+#### Option 2: Using traditional pip
+
+1. Navigate to the project directory:
+
+```
+cd path/to/Honeybee-MCP
+```
+
+2. Create a virtual environment in the project folder:
 
 ```
 python -m venv venv
 ```
 
-Activation: Activate the environment based on your operating system:
+3. Activate the environment:
 
 Windows:
 ```
 venv\Scripts\activate
 ```
 
-Unix/macOS: 
+Unix/macOS:
 ```
 source venv/bin/activate
 ```
 
-Dependency Installation: Install the core libraries and geometry engines:
+4. Install dependencies:
 
 ```
 pip install -r requirements.txt
 ```
 
-Verification: Execute the server locally to confirm the transport layer is functioning:
+#### Verification
+
+Execute the server locally to confirm the transport layer is functioning:
 
 ```
 python server.py
 ```
+
 ## IDE Configuration
 
-### Claude Desktop Integration
+### OpenCode Integration
 
-Integrating Honeybee-MCP into an AI-powered IDE requires defining the server's entry point in the respective configuration file.
+Create or edit the `.opencode/opencode.json` file in your project directory:
 
 ```json
 {
-  "mcpServers": {
-    "honeybee": {
-      "command": "python",
-      "args": ["C:\\path\\to\\Honeybee-MCP\\server.py"],
-      "cwd": "C:\\path\\to\\Honeybee-MCP"
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "honeybee-mcp": {
+      "type": "local",
+      "command": [
+        "./venv/Scripts/python.exe",
+        "./server.py"
+      ],
+      "enabled": true
     }
   }
 }
 ```
 
-### Cursor IDE or VS Code
+Note: The paths use relative paths from the project directory. If you're using a different virtual environment location, adjust the Python executable path accordingly.
 
-For IDEs like Cursor or VS Code (via MCP extensions), navigate to the MCP settings panel and add a new server. Ensure the Command points to your Python executable and the Arguments include the absolute path to server.py. Absolute paths are mandatory to prevent execution errors related to the working directory.
+### Other AI IDEs
+
+Honeybee-MCP is compatible with MCP-enabled IDEs including:
+
+- **VS Code** - Via MCP extensions
+- **Cursor** - Built-in MCP support
+- **Trae** - Native MCP integration
+- **Other AI IDE**
+
+For these IDEs, navigate to the MCP settings panel and add a new server. Configure the command to point to your Python executable (from the virtual environment) and the arguments to include the path to `server.py`.
 
 ## Project Architecture
 
 The repository is structured to separate the MCP protocol logic from the Honeybee geometry engines:
 
-``server.py``: The main entry point initializing the FastMCP server.
+```
+Honeybee-MCP/
+├── server.py              # Main entry point initializing the FastMCP server
+├── requirements.txt       # Python dependencies
+├── README.md             # Project documentation
+├── tools/                # Modular directory containing individual Python scripts
+│   ├── __init__.py
+│   ├── mcp_context.py    # MCP context management
+│   ├── load_model.py     # Model loading utilities
+│   ├── save_model.py     # Model saving utilities
+│   ├── query_model.py    # Model querying tools
+│   ├── query_room.py     # Room property queries
+│   ├── query_face.py     # Face property queries
+│   ├── query_aperture.py # Aperture property queries
+│   ├── query_door.py     # Door property queries
+│   ├── query_shade.py    # Shade property queries
+│   ├── aperture_editor.py    # Aperture manipulation tools
+│   ├── face_editor.py        # Face manipulation tools
+│   ├── room_editor.py        # Room manipulation tools
+│   ├── model_editor.py       # Model-level editing tools
+│   ├── apply_all_face.py     # Apply attributes to faces
+│   ├── apply_hvac.py         # HVAC system configuration
+│   ├── apply_room.py         # Room-level attribute application
+│   ├── hvac_config.json      # HVAC configuration presets
+│   └── search_properties_lib.py # Library property search
+├── src/                  # Default directory for source files and outputs
+│   ├── resource/         # Project resources (images, etc.)
+│   │   └── Honeybee-MCP.png
+│   └── sample/           # Sample HBJSON files
+│       └── Revit_Sample.hbjson
+```
 
-``tools/``: A modular directory containing individual Python scripts for each tool category (e.g., aperture_editor.py, query_model.py).
+## Future Plan
 
-``src/``: The default directory for storing source HBJSON files and generated outputs.
+At present, the Honeybee-MCP has relatively complete functions for querying, editing and applying the model. I expect to add more functions in the near future.
+
+- **Agent Skill and Prompts Templates.**
+- **More tools for creating and editing Honeybee Properties.**
+- **The model exporter and the local preview method**
+- **From AI Agent to Simulation Capabilities**
+- **More MCP tools from the Ladybug Tools ecosystem**
+- ......
 
 ## Available Tools
+
+The currently available and tested MCP tools：
 
 | Tool Name | Description |
 | :--- | :--- |
