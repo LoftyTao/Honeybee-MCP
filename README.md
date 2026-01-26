@@ -2,8 +2,6 @@
 
 <img src="src\resource\Honeybee-MCP.png" alt="Honeybee-MCP" width="150">
 
-## What is Honeybee-MCP?
-
 Honeybee-MCP is a sophisticated Model Context Protocol (MCP) server designed to bridge the gap between Large Language Models (LLMs) and the Honeybee ecosystem for building energy modeling (BEM). 
 
 The primary objective of Honeybee-MCP is to provide a seamless integration layer for manipulating HBJSON and HBpkl files within AI-augmented design environments. It abstracts the underlying complexities of the honeybee-core libraries, offering a set of high-level tools that allow an AI to "understand" and "modify" 3D building models. 
