@@ -16,6 +16,26 @@ To ensure stability and performance, the server requires Python 3.8 or higher. I
 
 ### Installation Procedure
 
+**IMPORTANT NOTE**: Due to Pydantic version conflicts between fastMCP and Ladybug/Honeybee packages, please use the provided installation scripts instead of running `pip install -r requirements.txt` directly. The scripts handle the conflict by reinstalling fastMCP with the `--no-deps` flag.
+
+First, clone the repository to your local machine:
+
+**Option 1: Using Git**
+
+```
+git clone https://github.com/yourusername/Honeybee-MCP.git
+cd Honeybee-MCP
+```
+
+**Option 2: Using GitHub Desktop**
+
+Whether you're new to Git or a seasoned user, GitHub Desktop simplifies your development workflow.
+
+1. Download and install [GitHub Desktop](https://github.com/apps/desktop)
+2. Open GitHub Desktop and go to `File` > `Clone Repository`
+3. Enter the repository URL: `https://github.com/yourusername/Honeybee-MCP.git`
+4. Choose a local path and click `Clone`
+
 We recommend using **uv**, a fast and modern Python package manager that significantly speeds up dependency resolution and installation.
 
 #### Option 1: Using uv (Recommended)
@@ -38,10 +58,16 @@ cd path/to/Honeybee-MCP
 uv venv
 ```
 
-4. Install dependencies:
+4. **Install dependencies using the provided script** (Windows):
 
 ```
-uv pip install -r requirements.txt
+install.bat
+```
+
+Or (Linux/Mac):
+
+```
+bash install.sh
 ```
 
 5. Activate the environment:
@@ -82,11 +108,21 @@ Unix/macOS:
 source venv/bin/activate
 ```
 
-4. Install dependencies:
+4. **Install dependencies using the provided script** (Windows):
 
 ```
-pip install -r requirements.txt
+install.bat
 ```
+
+Or (Linux/Mac):
+
+```
+bash install.sh
+```
+
+**Note**: The installation script will:
+- Install all dependencies from requirements.txt
+- Reinstall fastMCP with `--no-deps` to resolve Pydantic conflicts
 
 #### Verification
 
