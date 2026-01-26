@@ -112,7 +112,7 @@ Choose the way you like best.eg.
 
 - Tell OpenCode to carry out the following plan.
 
-#text(size: 18pt)[
+#text(size: 16pt)[
 ```Prompts
 Build this project following README.md instructions:
 Create a virtual environment using UV.
