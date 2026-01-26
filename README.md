@@ -6,6 +6,17 @@ Honeybee-MCP is a sophisticated Model Context Protocol (MCP) server designed to 
 
 The primary objective of Honeybee-MCP is to provide a seamless integration layer for manipulating HBJSON and HBpkl files within AI-augmented design environments. It abstracts the underlying complexities of the honeybee-core libraries, offering a set of high-level tools that allow an AI to "understand" and "modify" 3D building models. 
 
+## Documentation
+
+For a comprehensive tutorial on how to use Honeybee-MCP, please refer to the [Tutorial.pdf](src/docs/Tutorial.pdf). 
+
+### Quick Start Guide
+
+1. **Clone the repository** from [GitHub](https://github.com/LoftyTao/Honeybee-MCP).
+2. **Install an AI IDE** .(OpenCode, Cursor, VS Code, etc.)
+3. **Configure MCP** Automatically build the project through AI Agent.
+4. **Use prompts** to interact with your Honeybee models.
+
 ## Technical Requirements and Installation
 
 ### Prerequisites
