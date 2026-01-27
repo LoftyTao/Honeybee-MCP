@@ -45,53 +45,9 @@ Whether you're new to Git or a seasoned user, GitHub Desktop simplifies your dev
 3. Enter the repository URL: `https://github.com/yourusername/Honeybee-MCP.git`
 4. Choose a local path and click `Clone`
 
-We recommend using **uv**, a fast and modern Python package manager that significantly speeds up dependency resolution and installation.
+We recommend using **native Python** for creating virtual environments, which is the standard and most compatible approach.
 
-#### Option 1: Using uv (Recommended)
-
-1. Install uv (if not already installed):
-
-```
-pip install uv
-```
-
-2. Navigate to the project directory:
-
-```
-cd path/to/Honeybee-MCP
-```
-
-3. Create a virtual environment in the project folder:
-
-```
-uv venv
-```
-
-4. **Install dependencies using the provided script** (Windows):
-
-```
-install.bat
-```
-
-Or (Linux/Mac):
-
-```
-bash install.sh
-```
-
-5. Activate the environment:
-
-Windows:
-```
-.venv\Scripts\activate
-```
-
-Unix/macOS:
-```
-source .venv/bin/activate
-```
-
-#### Option 2: Using traditional pip
+#### Option 1: Using native Python (Recommended)
 
 1. Navigate to the project directory:
 
@@ -101,23 +57,17 @@ cd path/to/Honeybee-MCP
 
 2. Create a virtual environment in the project folder:
 
+Windows:
 ```
 python -m venv venv
 ```
 
-3. Activate the environment:
-
-Windows:
-```
-venv\Scripts\activate
-```
-
 Unix/macOS:
 ```
-source venv/bin/activate
+python3 -m venv venv
 ```
 
-4. **Install dependencies using the provided script** (Windows):
+3. **Install dependencies using the provided script** (Windows):
 
 ```
 install.bat
@@ -127,6 +77,18 @@ Or (Linux/Mac):
 
 ```
 bash install.sh
+```
+
+4. Activate the environment:
+
+Windows:
+```
+venv\Scripts\activate
+```
+
+Unix/macOS:
+```
+source venv/bin/activate
 ```
 
 **Note**: The installation script will:
@@ -154,16 +116,15 @@ Create or edit the `.opencode/opencode.json` file in your project directory:
     "honeybee-mcp": {
       "type": "local",
       "command": [
-        "./venv/Scripts/python.exe",
-        "./server.py"
+        //Note: The paths use relative paths from the project directory. If you're using a different virtual environment location, adjust the Python executable path accordingly.
+        "./Honeybee-MCP/venv/Scripts/python.exe",
+        "./Honeybee-MCP/venv/Scripts/python.exe/server.py"
       ],
       "enabled": true
     }
   }
 }
 ```
-
-Note: The paths use relative paths from the project directory. If you're using a different virtual environment location, adjust the Python executable path accordingly.
 
 ### Other AI IDEs
 

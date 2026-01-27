@@ -115,7 +115,7 @@ Choose the way you like best.eg.
 #text(size: 16pt)[
 ```Prompts
 Build this project following README.md instructions:
-Create a virtual environment using UV.
+Create a virtual environment.
 Activate the environment.
 Install dependencies using the installation script:
   - Windows: install.bat
