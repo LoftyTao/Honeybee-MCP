@@ -1,26 +1,10 @@
-# Honeybee-MCP Dependencies
-# 
-# IMPORTANT INSTALLATION INSTRUCTIONS:
-# Due to Pydantic version conflicts between fastMCP and Ladybug/Honeybee packages,
-# please use the installation script instead of running pip install directly:
-#
-# Windows:
-#   install.bat
-#
-# Linux/Mac:
-#   bash install.sh
-#
-# The script will:
-# 1. Install all dependencies from this file
-# 2. Reinstall fastMCP with --no-deps to resolve conflicts
-
-# Core Honeybee/Ladybug dependencies
 honeybee-core
+honeybee-energy
+honeybee-radiance
+honeybee-energy-standards
 ladybug-core
 ladybug-geometry
 ladybug-geometry-polyskel
 honeybee-schema
 honeybee-standards
-
-# FastMCP (will be reinstalled by script to resolve conflicts)
 fastmcp

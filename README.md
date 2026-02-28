@@ -25,8 +25,6 @@ To ensure stability and performance, the server requires Python 3.8 or higher. I
 
 ### Installation Procedure
 
-**IMPORTANT NOTE**: Due to Pydantic version conflicts between fastMCP and Ladybug/Honeybee packages, please use the provided installation scripts instead of running `pip install -r requirements.txt` directly. The scripts handle the conflict by reinstalling fastMCP with the `--no-deps` flag.
-
 First, clone the repository to your local machine:
 
 **Option 1: Using Git**
@@ -67,16 +65,10 @@ Unix/macOS:
 python3 -m venv venv
 ```
 
-3. **Install dependencies using the provided script** (Windows):
+3. Install dependencies:
 
 ```
-install.bat
-```
-
-Or (Linux/Mac):
-
-```
-bash install.sh
+pip install -r requirements.txt
 ```
 
 4. Activate the environment:
@@ -90,10 +82,6 @@ Unix/macOS:
 ```
 source venv/bin/activate
 ```
-
-**Note**: The installation script will:
-- Install all dependencies from requirements.txt
-- Reinstall fastMCP with `--no-deps` to resolve Pydantic conflicts
 
 #### Verification
 
