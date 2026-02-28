@@ -21,7 +21,12 @@ For a comprehensive tutorial on how to use Honeybee-MCP, please refer to the [Tu
 
 ### Prerequisites
 
-To ensure stability and performance, the server requires Python 3.8 or higher. It is built upon the fastmcp framework, which handles the asynchronous communication between the AI IDE and the Python runtime.
+To ensure stability and performance, the server requires:
+
+- **Python 3.8 or higher**
+- **Ladybug Tools 1.10** (including Ladybug Tools SDK 1.10)
+
+The server is built upon the fastmcp framework, which handles the asynchronous communication between the AI IDE and the Python runtime.
 
 ### Installation Procedure
 
@@ -125,6 +130,84 @@ Honeybee-MCP is compatible with MCP-enabled IDEs including:
 
 For these IDEs, navigate to the MCP settings panel and add a new server. Configure the command to point to your Python executable (from the virtual environment) and the arguments to include the path to `server.py`.
 
+## Grasshopper Integration
+
+Honeybee-MCP provides Grasshopper components for real-time model exchange between Grasshopper and AI IDE via shared memory (memory-mapped files).
+
+### Components
+
+Two Grasshopper Python components are provided in `src/grasshopper/`:
+
+| Component | File | Description |
+|-----------|------|-------------|
+| **HB-MCP Writer** | `HB-MCP Writer.py` | Write Honeybee Model to shared memory |
+| **HB-MCP Reader** | `HB-MCP Reader.py` | Read Honeybee Model from shared memory |
+
+### Installation
+
+1. Copy `HB-MCP Writer.py` and `HB-MCP Reader.py` to your Grasshopper components folder or use them directly in a Python Script component.
+2. The components will appear under `HB-MCP → 0 :: Mcp` category in Grasshopper.
+
+### Usage Workflow
+
+```
+┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
+│  Honeybee Model │      │  HB-MCP Writer  │      │  Shared Memory  │
+│   (Grasshopper) │ ───► │                 │ ───► │   (.mmap file)  │
+└─────────────────┘      └─────────────────┘      └────────┬────────┘
+                                                           │
+                                                           ▼
+┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
+│  Honeybee Model │      │  HB-MCP Reader  │      │    AI IDE +     │
+│   (Modified)    │ ◄─── │                 │ ◄─── │  Honeybee-MCP   │
+└─────────────────┘      └─────────────────┘      └─────────────────┘
+```
+
+**Step-by-step:**
+
+1. **Writer Component:**
+   - Input: Connect a Honeybee Model to `_model`
+   - Input: Set `_write=True` to write to shared memory
+   - Output: `name` (auto-derived from model's display_name)
+
+2. **AI IDE:**
+   - Use `load_model_from_shared_memory` to load the model
+   - Modify the model using MCP tools
+   - Use `save_model_to_shared_memory` to save changes
+
+3. **Reader Component:**
+   - Input: Connect `name` from Writer to `_name`
+   - Input: Set `_read=True` to read from shared memory
+   - Output: Modified Honeybee Model
+
+### Component Details
+
+#### HB-MCP Writer
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `_model` | Model | Honeybee Model object |
+| `_write` | Boolean | Set to True to write |
+
+| Output | Type | Description |
+|--------|------|-------------|
+| `report` | List | Status messages |
+| `name` | String | Shared memory name (model display_name) |
+| `success` | Boolean | Write success status |
+
+#### HB-MCP Reader
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `_name` | String | Shared memory name |
+| `_read` | Boolean | Set to True to read |
+| `clear_` | Boolean | Set to True to clear after reading |
+
+| Output | Type | Description |
+|--------|------|-------------|
+| `report` | List | Status messages |
+| `model` | Model | Honeybee Model object |
+
 ## Project Architecture
 
 The repository is structured to separate the MCP protocol logic from the Honeybee geometry engines:
@@ -152,13 +235,18 @@ Honeybee-MCP/
 │   ├── apply_all_face.py     # Apply attributes to faces
 │   ├── apply_hvac.py         # HVAC system configuration
 │   ├── apply_room.py         # Room-level attribute application
+│   ├── shared_memory.py      # Shared memory management
+│   ├── shared_memory_tools.py # Shared memory MCP tools
 │   ├── hvac_config.json      # HVAC configuration presets
 │   └── search_properties_lib.py # Library property search
 ├── src/                  # Default directory for source files and outputs
 │   ├── resource/         # Project resources (images, etc.)
 │   │   └── Honeybee-MCP.png
-│   └── sample/           # Sample HBJSON files
-│       └── Revit_Sample.hbjson
+│   ├── sample/           # Sample HBJSON files
+│   │   └── Revit_Sample.hbjson
+│   └── grasshopper/      # Grasshopper components
+│       ├── HB-MCP Writer.py
+│       └── HB-MCP Reader.py
 ```
 
 ## Future Plan
@@ -176,10 +264,22 @@ At present, the Honeybee-MCP has relatively complete functions for querying, edi
 
 The currently available and tested MCP tools：
 
+### Model I/O
+
 | Tool Name | Description |
 | :--- | :--- |
 | load_model | Load Honeybee model from HBJSON/HBpkl file |
+| load_model_from_dict | Load model from dictionary representation |
+| load_model_from_shared_memory | Load model from shared memory (Grasshopper) |
 | save_model | Save current model to HBJSON file |
+| save_model_to_shared_memory | Save model to shared memory (Grasshopper) |
+| check_shared_memory_status | Check if model exists in shared memory |
+| clear_shared_memory_model | Clear shared memory segment |
+
+### Aperture Tools
+
+| Tool Name | Description |
+| :--- | :--- |
 | add_louvers | Add louver shades to apertures |
 | add_louvers_by_count | Add louvers with specified count |
 | add_louvers_by_distance_between | Add louvers with specified spacing |
@@ -188,20 +288,40 @@ The currently available and tested MCP tools：
 | add_apertures_by_ratio_rectangle | Add rectangular apertures by ratio |
 | add_apertures_by_ratio_gridded | Add gridded apertures by ratio |
 | add_apertures_by_width_height_rectangle | Add repeated rectangular apertures |
+
+### Removal Tools
+
+| Tool Name | Description |
+| :--- | :--- |
 | remove_face_objects | Remove objects from faces |
 | remove_room_shades | Remove shades from rooms |
 | remove_all_apertures | Remove all apertures from model |
 | remove_all_doors | Remove all doors from model |
 | remove_all_shades | Remove all shades from model |
+
+### Query Tools
+
+| Tool Name | Description |
+| :--- | :--- |
 | query_model | Query model information and objects |
-| query_rooms | Query room properties |
+| query_room | Query room properties with detailed Energy/Radiance attributes |
 | query_faces | Query face properties |
 | query_apertures | Query aperture properties |
 | query_doors | Query door properties |
 | query_shades | Query shade properties |
+
+### Apply Tools
+
+| Tool Name | Description |
+| :--- | :--- |
 | apply_opaque_attributes | Apply Opaque Constructions (Energy) or Modifiers (Radiance) to faces, doors, or exterior walls |
 | apply_window_attributes | Apply Window Constructions (Energy) or Modifiers (Radiance) to apertures, glass doors, or child apertures |
 | apply_shade_attributes | Apply Shade Constructions (Energy) or Modifiers (Radiance) to shades or attached objects |
 | apply_hvac | Apply HVAC systems (Ideal, AllAir, DOAS, HeatCool, SHW) to rooms with advanced Radiant configuration |
 | apply_room_attributes | Apply Construction Set, Modifier Set, Program Type, or conditioning status to rooms |
+
+### Search Tools
+
+| Tool Name | Description |
+| :--- | :--- |
 | search_properties | Search for Constructions, Modifiers, Program Types, and Construction Sets in library |
