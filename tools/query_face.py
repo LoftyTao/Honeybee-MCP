@@ -73,57 +73,9 @@ def query_faces(
     return_count: bool = False
 ) -> dict:
     """
-    Query various properties for multiple faces, including detailed Energy and Radiance attributes.
+    Query various properties for multiple faces including Energy and Radiance attributes.
     
-    This tool retrieves geometric, topological, and simulation properties for the
-    specified faces. Multiple properties can be queried in a single call.
-    
-    Args:
-        face_identifiers: List of face identifiers to query.
-        identifier: Return the face identifier string.
-        display_name: Return the face display name.
-        type: Return the face type (Wall, Floor, RoofCeiling, AirBoundary).
-        boundary_condition: Return the boundary condition (Outdoors, Surface, Ground, Adiabatic).
-        apertures: Return aperture identifiers or count on this face.
-        doors: Return door identifiers or count on this face.
-        sub_faces: Return all sub-face identifiers or count.
-        indoor_shades: Return indoor shade identifiers or count.
-        outdoor_shades: Return outdoor shade identifiers or count.
-        parent: Return the parent room identifier.
-        has_parent: Return True if face has a parent room.
-        has_sub_faces: Return True if face has sub-faces (apertures/doors).
-        can_be_ground: Return True if face can be a ground boundary.
-        geometry: Return the face geometry string representation.
-        punched_geometry: Return geometry with apertures/doors removed.
-        vertices: Return list of vertex coordinates [[x,y,z], ...].
-        punched_vertices: Return vertices with apertures/doors removed.
-        upper_left_vertices: Return vertices starting from upper-left corner.
-        normal: Return the normal vector [x, y, z].
-        center: Return the center point [x, y, z].
-        area: Return the face area in m².
-        perimeter: Return the face perimeter in m.
-        min: Return the minimum bounding box coordinates [x, y, z].
-        max: Return the maximum bounding box coordinates [x, y, z].
-        aperture_area: Return the total aperture area in m².
-        aperture_ratio: Return the aperture-to-wall ratio.
-        tilt: Return the tilt angle in degrees (0=up, 180=down).
-        altitude: Return the altitude angle in degrees.
-        azimuth: Return the azimuth angle in degrees (0=North, 90=East).
-        is_exterior: Return True if face is exterior.
-        type_color: Return the color associated with face type.
-        bc_color: Return the color associated with boundary condition.
-        energy_properties: Return detailed EnergyPlus properties (construction, materials, R-value, etc.).
-        radiance_properties: Return detailed Radiance properties (modifier, reflectance, etc.).
-        return_count: If True, return counts instead of identifier lists. Default is False.
-    
-    Returns:
-        dict: Dictionary mapping face identifiers to their queried properties.
-            Each face entry contains only the requested properties.
-    
-    Example:
-        query_faces(["Face_1"], area=True, normal=True)
-        query_faces(["Face_1", "Face_2"], energy_properties=True)
-        query_faces(["South_Face"], apertures=True, return_count=True)
+    Retrieves geometric, topological, and simulation properties for the specified faces.
     """
     if not manager.model:
         raise ValueError("Model is not loaded.")

@@ -15,18 +15,7 @@ def remove_all_apertures() -> dict:
     """
     Remove all apertures from the model.
     
-    This tool removes all apertures (windows, skylights) from all faces
-    in the model, including both room faces and orphaned faces. This is
-    useful for creating a model without any glazing for analysis purposes.
-    
-    Returns:
-        dict: Dictionary containing:
-            - success (bool): Whether the operation was successful
-            - message (str): Status message
-            - error (str): Error message if operation failed
-    
-    Example:
-        remove_all_apertures()
+    Removes all apertures (windows, skylights) from all faces including room faces and orphaned faces.
     """
     if manager.model is None:
         return {
@@ -46,17 +35,7 @@ def remove_all_doors() -> dict:
     """
     Remove all doors from the model.
     
-    This tool removes all doors from all faces in the model, including
-    both room faces and orphaned faces. Both glass and opaque doors are removed.
-    
-    Returns:
-        dict: Dictionary containing:
-            - success (bool): Whether the operation was successful
-            - message (str): Status message
-            - error (str): Error message if operation failed
-    
-    Example:
-        remove_all_doors()
+    Removes all doors from all faces including room faces and orphaned faces.
     """
     if manager.model is None:
         return {
@@ -73,34 +52,83 @@ def remove_all_doors() -> dict:
 
 
 @mcp.tool()
-def remove_all_shades() -> dict:
+def remove_all_shades(shade_mesh_ids: list = None) -> dict:
     """
-    Remove all shades from the model.
+    Remove shades from the model.
     
-    This tool removes all shading elements from the model, including:
-    - Outdoor shades (overhangs, fins, louvers)
-    - Indoor shades (blinds, curtains)
-    - Orphaned shades
-    - Shade meshes
+    SHADE TYPES:
+    - Shade: Attached shading (louvers, overhangs, blinds) on windows/doors/faces
+      Subtypes: outdoor_shades, indoor_shades, orphaned_shades
+    - ShadeMesh: Independent context geometry (trees, surrounding buildings)
     
-    Returns:
-        dict: Dictionary containing:
-            - success (bool): Whether the operation was successful
-            - message (str): Status message
-            - error (str): Error message if operation failed
+    AI BEHAVIOR GUIDE:
+    When user says "delete shades" without specifying type:
+    1. First query the model to show what shading elements exist
+    2. If BOTH Shade and ShadeMesh exist, ASK user which to remove:
+       - "Found X attached shades (louvers, overhangs) and Y context meshes (trees, buildings). Remove all, or specific type?"
+    3. If only one type exists, proceed to remove that type
+    4. Default behavior (no arguments): removes ALL shading elements (both Shade and ShadeMesh)
     
-    Example:
-        remove_all_shades()
+    Args:
+        shade_mesh_ids: Optional list of ShadeMesh identifiers to remove ONLY those meshes.
+                       If None, removes ALL shading elements (both Shade and ShadeMesh).
     """
     if manager.model is None:
         return {
             "success": False,
             "message": "No model loaded. Please use load_model to load a model first."
         }
-
-    manager.model.remove_all_shades()
-
+    
+    if shade_mesh_ids is None:
+        outdoor_count = len(manager.model.outdoor_shades)
+        indoor_count = len(manager.model.indoor_shades)
+        orphaned_count = len(manager.model.orphaned_shades)
+        mesh_count = len(manager.model.shade_meshes)
+        total_count = outdoor_count + indoor_count + orphaned_count + mesh_count
+        
+        manager.model.remove_all_shades()
+        manager.model.remove_shade_meshes()
+        
+        return {
+            "success": True,
+            "message": "All shading elements have been removed from the model.",
+            "removed": {
+                "outdoor_shades": outdoor_count,
+                "indoor_shades": indoor_count,
+                "orphaned_shades": orphaned_count,
+                "shade_meshes": mesh_count,
+                "total": total_count
+            }
+        }
+    
+    current_count = len(manager.model.shade_meshes)
+    
+    if current_count == 0:
+        return {
+            "success": True,
+            "message": "No shade meshes found in the model.",
+            "removed_count": 0,
+            "hint": "Use remove_all_shades() without arguments to remove all shading elements."
+        }
+    
+    removed = []
+    not_found = []
+    
+    for mesh_id in shade_mesh_ids:
+        mesh = manager.model.shade_meshes_by_identifier.get(mesh_id)
+        if mesh:
+            removed.append(mesh_id)
+        else:
+            not_found.append(mesh_id)
+    
+    if removed:
+        manager.model.remove_shade_meshes(removed)
+    
     return {
         "success": True,
-        "message": "All shades (Shade) have been removed from the model."
+        "message": "Removed {} shade mesh(es) from the model.".format(len(removed)),
+        "removed_count": len(removed),
+        "removed_ids": removed,
+        "not_found": not_found,
+        "remaining_count": len(manager.model.shade_meshes)
     }

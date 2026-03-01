@@ -15,7 +15,8 @@ This component reads a model that was written to shared memory by an AI IDE
 via the Honeybee-MCP server. It supports both manual and automatic update modes.
 
     Args:
-        _name: Name of the shared memory segment (should match the model's display_name).
+        _name: Name of the shared memory segment. Connect the 'name' output from 
+               HB-MCP Writer to automatically use the correct model identifier.
         _read: Set to "True" to read the model from shared memory (manual mode).
         _interval_: Check interval in milliseconds for auto mode (default: 500).
         run_: Set to "True" to enable automatic monitoring for MCP changes.

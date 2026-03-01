@@ -117,63 +117,7 @@ def apply_hvac(
     """
     Unified tool to apply ANY HVAC system (Ideal, AllAir, DOAS, HeatCool, SHW) to rooms.
     
-    This tool applies HVAC systems to rooms with full configuration support. It supports
-    Ideal Air systems, All-Air systems (VAV, PVAV, etc.), DOAS systems, Radiant systems
-    (HeatCool), and Service Hot Water systems.
-    
-    Args:
-        system_category: HVAC system category. Options:
-            - "Ideal": Ideal Air Load System (default)
-            - "AllAir": All-Air systems (VAV, PVAV, PSZ, etc.)
-            - "DOAS": Dedicated Outdoor Air Systems
-            - "HeatCool": Radiant heating/cooling systems
-            - "SHW": Service Hot Water systems
-        system_type: Specific system type within the category. Required for AllAir,
-            DOAS, HeatCool, and SHW. Use list_options=True to see available types.
-        vintage: Standard year for equipment efficiency. Default is "ASHRAE_2019".
-            Options include ASHRAE_2010, ASHRAE_2013, ASHRAE_2016, ASHRAE_2019, etc.
-        name: Display name for the HVAC system. Auto-generated if not provided.
-        room_identifiers: List of room IDs to apply HVAC to. If None, applies to all rooms.
-        list_options: If True, return available system types and vintages instead of applying.
-            Default is False.
-        economizer_type: Economizer type for AllAir/DOAS systems. Options:
-            "NoEconomizer", "DifferentialDryBulb", "DifferentialEnthalpy", etc.
-        sensible_heat_recovery: Sensible heat recovery effectiveness (0-1). 
-            Example: 0.7 for 70% effectiveness.
-        latent_heat_recovery: Latent heat recovery effectiveness (0-1).
-        demand_controlled_ventilation: Enable DCV based on CO2 levels. Default is False.
-        heating_air_temperature: Supply air temperature for heating (°C). Ideal Air only.
-        cooling_air_temperature: Supply air temperature for cooling (°C). Ideal Air only.
-        heating_limit: Maximum heating capacity. Options: number (W), "Autosize", "NoLimit".
-        cooling_limit: Maximum cooling capacity. Options: number (W), "Autosize", "NoLimit".
-        heating_availability_schedule: Schedule name for heating availability.
-        cooling_availability_schedule: Schedule name for cooling availability.
-        doas_availability_schedule: Schedule name for DOAS operation.
-        shw_efficiency: Hot water heater efficiency (0-1). For SHW systems.
-        shw_ambient_condition: Ambient temperature source for SHW. Can be a number (°C)
-            or a room identifier for temperature from another zone.
-        shw_loss_coefficient: Tank loss coefficient (W/K). Default is 6.0.
-        radiant_type: Radiant panel type for HeatCool/DOAS radiant systems. Options:
-            "Floor", "Ceiling", "FloorWithCarpet", "CeilingMetalPanel", "FloorWithHardwood".
-        radiant_switch_over_time: Hours before switching between heating/cooling modes.
-            Default is 24 hours.
-    
-    Returns:
-        dict: Dictionary containing:
-            - status (str): "success", "skipped", "info", or "error"
-            - category (str): System category applied
-            - system_type (str): Specific system type
-            - system_name (str): Display name of the system
-            - updated_room_count (int): Number of rooms updated
-            - warnings (list): Any warnings about the operation
-            - available_types (list): Available system types (if list_options=True)
-            - available_vintages (list): Available vintages (if list_options=True)
-    
-    Example:
-        apply_hvac()  # Apply Ideal Air to all rooms
-        apply_hvac(system_category="AllAir", system_type="VAV", list_options=True)
-        apply_hvac(system_category="AllAir", system_type="VAV", room_identifiers=["Room_1"])
-        apply_hvac(system_category="HeatCool", system_type="Radiant", radiant_type="Floor")
+    Supports Ideal Air, All-Air (VAV, PVAV), DOAS, Radiant systems, and Service Hot Water.
     """
     
     valid_cats = ["AllAir", "DOAS", "HeatCool", "SHW"]

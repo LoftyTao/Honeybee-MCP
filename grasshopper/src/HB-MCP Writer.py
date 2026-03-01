@@ -71,12 +71,9 @@ def get_model_dict(model):
 
 
 def get_model_name(model):
-    """Get the display_name or identifier from Honeybee Model object."""
+    """Get the identifier from Honeybee Model object (stable, unique)."""
     if model is None:
         return None
-    
-    if hasattr(model, 'display_name') and model.display_name:
-        return model.display_name
     
     if hasattr(model, 'identifier'):
         return model.identifier

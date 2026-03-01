@@ -44,48 +44,7 @@ def query_apertures(
     """
     Query various properties for multiple apertures.
     
-    This tool retrieves geometric, topological, and physical properties for
-    the specified apertures (windows, skylights). Multiple properties can be
-    queried in a single call.
-    
-    Args:
-        aperture_identifiers: List of aperture identifiers to query.
-        identifier: Return the aperture identifier string.
-        display_name: Return the aperture display name.
-        boundary_condition: Return the boundary condition (Outdoors, Surface).
-        is_operable: Return True if aperture can be opened for natural ventilation.
-        is_exterior: Return True if aperture is on an exterior face.
-        has_parent: Return True if aperture has a parent face.
-        parent: Return the parent face identifier.
-        top_level_parent: Return the top-level parent (room) identifier.
-        geometry: Return the aperture geometry string representation.
-        vertices: Return list of vertex coordinates [[x,y,z], ...].
-        upper_left_vertices: Return vertices starting from upper-left corner.
-        normal: Return the normal vector [x, y, z].
-        center: Return the center point [x, y, z].
-        area: Return the aperture area in m².
-        perimeter: Return the aperture perimeter in m.
-        min: Return the minimum bounding box coordinates [x, y, z].
-        max: Return the maximum bounding box coordinates [x, y, z].
-        tilt: Return the tilt angle in degrees (0=up, 180=down).
-        altitude: Return the altitude angle in degrees.
-        azimuth: Return the azimuth angle in degrees (0=North, 90=East).
-        indoor_shades: Return indoor shade identifiers or count.
-        outdoor_shades: Return outdoor shade identifiers or count.
-        type_color: Return the color associated with aperture type.
-        bc_color: Return the color associated with boundary condition.
-        triangulated_mesh3d: Return a triangulated mesh representation.
-        return_count: If True, return counts instead of identifier lists for shades.
-            Default is False.
-    
-    Returns:
-        dict: Dictionary mapping aperture identifiers to their queried properties.
-            Each aperture entry contains only the requested properties.
-    
-    Example:
-        query_apertures(["Window_1"], area=True, normal=True)
-        query_apertures(["Window_1", "Window_2"], is_operable=True)
-        query_apertures(["Skylight_1"], outdoor_shades=True, return_count=True)
+    Retrieves geometric, topological, and physical properties for the specified apertures (windows, skylights).
     """
     result = {}
 

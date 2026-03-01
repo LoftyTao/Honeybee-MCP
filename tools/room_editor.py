@@ -19,30 +19,7 @@ def remove_room_shades(
     """
     Remove shades from specified rooms.
     
-    This tool removes shading elements from the specified rooms. You can
-    choose to remove indoor shades, outdoor shades, or both.
-    
-    Args:
-        room_identifiers: List of room identifiers to remove shades from.
-        indoor_shades: If True, remove indoor shades (blinds, curtains).
-            Default is True.
-        outdoor_shades: If True, remove outdoor shades (overhangs, fins, louvers).
-            Default is True.
-    
-    Returns:
-        dict: Dictionary containing:
-            - success (bool): Whether the operation was successful
-            - message (str): Summary of processed rooms
-            - results (list): List of results for each room with:
-                - room_identifier (str): Room ID
-                - removed_count (int): Number of shades removed
-                - shade_type (str): Types of shades removed
-            - not_found (list): Room identifiers not found
-    
-    Example:
-        remove_room_shades(["Room_1", "Room_2"])  # Remove all shades
-        remove_room_shades(["Room_3"], indoor_shades=False)  # Outdoor only
-        remove_room_shades(["Room_4"], outdoor_shades=False)  # Indoor only
+    Removes indoor and/or outdoor shading elements from the specified rooms.
     """
     if manager.model is None:
         return {

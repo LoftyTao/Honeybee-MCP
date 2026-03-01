@@ -32,43 +32,7 @@ def query_shades(
     """
     Query various properties for multiple shades.
     
-    This tool retrieves geometric, topological, and physical properties for
-    the specified shading elements. Shades can be outdoor (overhangs, louvers)
-    or indoor (blinds, curtains), and can be attached to rooms, faces,
-    apertures, or be orphaned.
-    
-    Args:
-        shade_identifiers: List of shade identifiers to query.
-        identifier: Return the shade identifier string.
-        display_name: Return the shade display name.
-        is_detached: Return True if shade is orphaned (not attached to parent).
-        is_indoor: Return True if shade is an indoor shade (blind/curtain).
-        has_parent: Return True if shade has a parent object.
-        parent: Return the direct parent identifier (face, aperture, or room).
-        top_level_parent: Return the top-level parent (room) identifier.
-        geometry: Return the shade geometry string representation.
-        vertices: Return list of vertex coordinates [[x,y,z], ...].
-        upper_left_vertices: Return vertices starting from upper-left corner.
-        normal: Return the normal vector [x, y, z].
-        center: Return the center point [x, y, z].
-        area: Return the shade area in m².
-        perimeter: Return the shade perimeter in m.
-        min: Return the minimum bounding box coordinates [x, y, z].
-        max: Return the maximum bounding box coordinates [x, y, z].
-        tilt: Return the tilt angle in degrees (0=up, 180=down).
-        altitude: Return the altitude angle in degrees.
-        azimuth: Return the azimuth angle in degrees (0=North, 90=East).
-        type_color: Return the color associated with shade type.
-        bc_color: Return the color associated with boundary condition.
-        return_count: This parameter is not used for shades. Default is False.
-    
-    Returns:
-        dict: Dictionary mapping shade identifiers to their queried properties.
-            Each shade entry contains only the requested properties.
-    
-    Example:
-        query_shades(["Louver_1"], area=True, normal=True)
-        query_shades(["Blind_1", "Blind_2"], is_indoor=True)
+    Retrieves geometric, topological, and physical properties for the specified shading elements (overhangs, louvers, blinds).
     """
     result = {}
 

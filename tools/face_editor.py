@@ -13,34 +13,7 @@ def add_aperture_by_width_height(
     """
     Add a rectangular aperture (window) at the center of each face.
     
-    This tool creates a single rectangular aperture centered on each specified face.
-    The aperture is positioned with the specified sill height from the bottom
-    of the face.
-    
-    Args:
-        face_identifiers: List of face identifiers to add apertures to.
-            Faces can be from rooms or orphaned faces.
-        width: Width of the aperture in meters. Must be greater than 0.
-        height: Height of the aperture in meters. Must be greater than 0.
-        sill_height: Height of the sill from the face bottom in meters.
-            Default is 1.0m (typical window sill height).
-        aperture_identifier: Optional base identifier for the aperture.
-            If not provided, an identifier will be auto-generated.
-    
-    Returns:
-        dict: Dictionary containing:
-            - success (bool): Whether the operation was successful
-            - message (str): Summary of processed faces
-            - results (list): List of results for each face with:
-                - face_identifier (str): Face ID
-                - aperture_identifier (str): Created aperture ID
-                - width, height, sill_height (float): Aperture dimensions
-                - error (str): Error if aperture creation failed
-            - not_found (list): Face identifiers that were not found
-    
-    Example:
-        add_aperture_by_width_height(["Face_1", "Face_2"], 1.5, 2.0)
-        add_aperture_by_width_height(["South_Face"], 2.0, 1.5, 0.9)
+    Creates a single centered aperture on each specified face with the given dimensions.
     """
     if manager.model is None:
         return {
@@ -130,41 +103,9 @@ def add_apertures_by_ratio_rectangle(
     tolerance: float = 0.01
 ) -> dict:
     """
-    Add rectangular apertures to faces based on area ratio.
+    Add rectangular apertures to faces based on area ratio (WWR).
     
-    This tool creates multiple rectangular apertures on each specified face,
-    with the total area equal to the specified ratio of the face area.
-    Apertures are distributed across the face with optional separation.
-    
-    Args:
-        face_identifiers: List of face identifiers to add apertures to.
-        ratio: Window-to-wall ratio (WWR) as a decimal (e.g., 0.4 for 40%).
-            Must be between 0 and 0.95.
-        aperture_height: Height of each aperture in meters. If not specified,
-            apertures will be sized automatically based on face dimensions.
-        sill_height: Height of the sill from the face bottom in meters.
-            Default is 0.9m.
-        horizontal_separation: Horizontal distance between apertures in meters.
-            If not specified, separation is calculated automatically.
-        vertical_separation: Vertical distance between rows of apertures.
-            Default is 0 (single row).
-        tolerance: Geometric tolerance for calculations in meters. Default is 0.01.
-    
-    Returns:
-        dict: Dictionary containing:
-            - success (bool): Whether the operation was successful
-            - message (str): Summary of processed faces
-            - results (list): List of results for each face with:
-                - face_identifier (str): Face ID
-                - ratio (float): Applied WWR
-                - aperture_count (int): Number of apertures created
-                - aperture_identifiers (list): IDs of created apertures
-                - error (str): Error if creation failed
-            - not_found (list): Face identifiers not found
-    
-    Example:
-        add_apertures_by_ratio_rectangle(["South_Face"], 0.4)  # 40% WWR
-        add_apertures_by_ratio_rectangle(["Face_1"], 0.3, aperture_height=1.5)
+    Creates multiple rectangular apertures with total area equal to the specified ratio of face area.
     """
     if manager.model is None:
         return {
@@ -281,28 +222,7 @@ def add_apertures_by_ratio(
     """
     Add apertures to faces based on area ratio.
     
-    This tool creates apertures on each specified face with the total area
-    equal to the specified ratio of the face area. Apertures can be split
-    into multiple rectangular windows or created as a single polygon.
-    
-    Args:
-        face_identifiers: List of face identifiers to add apertures to.
-        ratio: Window-to-wall ratio (WWR) as a decimal (e.g., 0.4 for 40%).
-            Must be between 0 and 1 (exclusive).
-        tolerance: Geometric tolerance for calculations in meters. Default is 0.01.
-        rect_split: If True, split apertures into rectangular windows.
-            If False, create single polygon apertures. Default is True.
-    
-    Returns:
-        dict: Dictionary containing:
-            - success (bool): Whether the operation was successful
-            - message (str): Summary of processed faces
-            - results (list): List of results for each face
-            - not_found (list): Face identifiers not found
-    
-    Example:
-        add_apertures_by_ratio(["Face_1"], 0.4)  # 40% WWR, rectangular
-        add_apertures_by_ratio(["Face_2"], 0.3, rect_split=False)  # Single polygon
+    Creates apertures with total area equal to the specified ratio. Can be split into rectangular windows or single polygon.
     """
     if manager.model is None:
         return {
@@ -393,29 +313,7 @@ def add_apertures_by_ratio_gridded(
     """
     Add apertures to faces in a grid pattern based on area ratio.
     
-    This tool creates a grid of rectangular apertures on each specified face.
-    The total aperture area equals the specified ratio of the face area.
-    Apertures are arranged in a regular grid pattern.
-    
-    Args:
-        face_identifiers: List of face identifiers to add apertures to.
-        ratio: Window-to-wall ratio (WWR) as a decimal (e.g., 0.4 for 40%).
-            Must be between 0 and 1 (exclusive).
-        x_dim: Horizontal dimension of each aperture in meters.
-        y_dim: Vertical dimension of each aperture in meters. If not specified,
-            uses x_dim value (square apertures).
-        tolerance: Geometric tolerance for calculations in meters. Default is 0.01.
-    
-    Returns:
-        dict: Dictionary containing:
-            - success (bool): Whether the operation was successful
-            - message (str): Summary of processed faces
-            - results (list): List of results for each face
-            - not_found (list): Face identifiers not found
-    
-    Example:
-        add_apertures_by_ratio_gridded(["Face_1"], 0.4, 1.0, 1.5)  # 1m x 1.5m grid
-        add_apertures_by_ratio_gridded(["Face_2"], 0.3, 0.6)  # 0.6m square grid
+    Creates a grid of rectangular apertures with total area equal to the specified ratio.
     """
     if manager.model is None:
         return {
@@ -523,30 +421,7 @@ def add_apertures_by_width_height_rectangle(
     """
     Add repeated rectangular apertures to faces based on width and height.
     
-    This tool creates multiple rectangular apertures across each specified face.
-    Apertures are repeated horizontally across the face with the specified
-    dimensions and separation.
-    
-    Args:
-        face_identifiers: List of face identifiers to add apertures to.
-        aperture_height: Height of each aperture in meters. Must be greater than 0.
-        aperture_width: Width of each aperture in meters. Must be greater than 0.
-        sill_height: Height of the sill from the face bottom in meters.
-            Default is 0.9m.
-        horizontal_separation: Horizontal distance between apertures in meters.
-            If not specified, apertures are evenly distributed.
-        tolerance: Geometric tolerance for calculations in meters. Default is 0.01.
-    
-    Returns:
-        dict: Dictionary containing:
-            - success (bool): Whether the operation was successful
-            - message (str): Summary of processed faces
-            - results (list): List of results for each face
-            - not_found (list): Face identifiers not found
-    
-    Example:
-        add_apertures_by_width_height_rectangle(["Face_1"], 1.5, 1.0)  # 1.5m x 1m windows
-        add_apertures_by_width_height_rectangle(["Face_2"], 2.0, 1.2, 0.8, 0.5)  # With separation
+    Creates multiple rectangular apertures repeated horizontally across each face.
     """
     if manager.model is None:
         return {
@@ -661,32 +536,7 @@ def remove_face_objects(
     """
     Remove objects from specified faces.
     
-    This tool removes apertures, doors, and/or shades from the specified faces.
-    Multiple object types can be removed in a single call by setting multiple
-    flags to True.
-    
-    Args:
-        face_identifiers: List of face identifiers to remove objects from.
-        apertures: If True, remove all apertures from the faces. Default is False.
-        doors: If True, remove all doors from the faces. Default is False.
-        indoor_shades: If True, remove all indoor shades from the faces. Default is False.
-        outdoor_shades: If True, remove all outdoor shades from the faces. Default is False.
-        sub_faces: If True, remove all sub-faces (apertures AND doors). This is a
-            shortcut that overrides apertures and doors flags. Default is False.
-    
-    Returns:
-        dict: Dictionary containing:
-            - success (bool): Whether the operation was successful
-            - message (str): Summary of processed faces
-            - results (list): List of results for each face with:
-                - face_identifier (str): Face ID
-                - removed_objects (list): List of removed object types with counts
-            - not_found (list): Face identifiers not found
-    
-    Example:
-        remove_face_objects(["Face_1"], apertures=True)  # Remove windows only
-        remove_face_objects(["Face_2"], sub_faces=True)  # Remove windows and doors
-        remove_face_objects(["Face_3"], outdoor_shades=True, indoor_shades=True)
+    Removes apertures, doors, and/or shades from the specified faces in a single call.
     """
     if manager.model is None:
         return {

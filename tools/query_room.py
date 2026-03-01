@@ -46,51 +46,7 @@ def query_room(
     """
     Query detailed Energy and Radiance attributes for specific rooms.
     
-    This tool retrieves comprehensive simulation properties for rooms including
-    program types, loads, schedules, setpoints, HVAC systems, and Radiance settings.
-    
-    Args:
-        room_identifiers: List of room IDs to query. If None, queries all rooms.
-        general_properties: Return general properties including:
-            - Program: Program type name
-            - Construction Set: Construction set name
-            - Is Conditioned: Boolean for HVAC presence
-        load_properties: Return load density properties including:
-            - People: People density (people/m²)
-            - Lighting: Lighting power density (W/m²)
-            - Equipment: Equipment power density (W/m²)
-            - Ventilation: Ventilation rate (m³/s·person or m³/s·m²)
-            - Infiltration: Infiltration rate (m³/s·m²)
-        schedule_properties: Return operation schedules including:
-            - Occupancy Schedule: When people are present
-            - Lighting Schedule: When lights are on
-            - Equipment Schedule: When equipment is running
-            - HVAC Schedule: When HVAC is operating
-            - Heating Schedule: When heating is active
-            - Cooling Schedule: When cooling is active
-        setpoint_properties: Return temperature setpoints including:
-            - Heating Setpoint: Heating temperature (°C)
-            - Cooling Setpoint: Cooling temperature (°C)
-            - Heating Setback: Night setback heating temp
-            - Cooling Setback: Night setback cooling temp
-            - Humidity Min/Max: Humidity limits (%)
-        hvac_properties: Return HVAC system details including:
-            - HVAC Type: System type name
-            - System Name: Specific system identifier
-            - Heating Efficiency: Heating COP or efficiency
-            - Cooling Efficiency: Cooling COP or EER
-            - SHW: Service hot water system
-        radiance_properties: Return Radiance properties including:
-            - Modifier Set: Material modifier set name
-    
-    Returns:
-        dict: Dictionary mapping room identifiers to their queried properties.
-            Each room entry contains only the requested property groups.
-    
-    Example:
-        query_room(general_properties=True)  # All rooms, general info
-        query_room(["Room_1"], load_properties=True, schedule_properties=True)
-        query_room(["Room_1", "Room_2"], hvac_properties=True)
+    Retrieves comprehensive simulation properties including program types, loads, schedules, setpoints, HVAC systems, and Radiance settings.
     """
     if not manager.model:
         raise ValueError("Model is not loaded.")
