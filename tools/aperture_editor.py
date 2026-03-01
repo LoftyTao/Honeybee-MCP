@@ -18,6 +18,42 @@ def add_louvers(
 ) -> dict:
     """
     Add a series of shading louvers to apertures.
+    
+    This tool creates horizontal or angled shading louvers on the specified
+    apertures. Louvers can be specified by count or by spacing distance.
+    
+    Args:
+        aperture_identifiers: List of aperture identifiers to add louvers to.
+        depth: Depth of each louver in meters. Must be greater than 0.
+        louver_count: Number of louvers to create. If specified with distance,
+            louver_count takes priority.
+        distance: Spacing between louvers in meters. Alternative to louver_count.
+        offset: Distance to offset louvers from the aperture in meters. Default is 0.
+        angle: Angle of louvers in degrees (0 = horizontal). Default is 0.
+        contour_vector: 2D vector [x, y] defining louver direction. Default is [0, 1]
+            (vertical arrangement, horizontal louvers).
+        flip_start_side: If True, start louvers from the opposite side. Default is False.
+        indoor: If True, create indoor shades (blinds). If False, create outdoor shades.
+            Default is False.
+        tolerance: Geometric tolerance for calculations in meters. Default is 0.01.
+        base_name: Base name for generated shade identifiers. If not provided,
+            names are auto-generated.
+    
+    Returns:
+        dict: Dictionary containing:
+            - success (bool): Whether the operation was successful
+            - message (str): Summary of processed apertures
+            - results (list): List of results for each aperture with:
+                - aperture_identifier (str): Aperture ID
+                - shade_count (int): Number of louvers created
+                - shade_identifiers (list): IDs of created louvers
+                - error (str): Error if creation failed
+            - not_found (list): Aperture identifiers not found
+    
+    Example:
+        add_louvers(["Window_1"], depth=0.3, louver_count=5)  # 5 louvers, 30cm deep
+        add_louvers(["Window_2"], depth=0.2, distance=0.15)  # 15cm spacing
+        add_louvers(["Window_3"], depth=0.25, louver_count=4, angle=30)  # 30° angle
     """
     if manager.model is None:
         return {
@@ -167,6 +203,28 @@ def add_louvers_by_distance_between(
 ) -> dict:
     """
     Add shading louvers to apertures to achieve target louver spacing.
+    
+    This tool creates louvers with a specified spacing between them.
+    The number of louvers is calculated based on the aperture height and spacing.
+    
+    Args:
+        aperture_identifiers: List of aperture identifiers to add louvers to.
+        distance: Target spacing between louvers in meters. Must be greater than 0.
+        depth: Depth of each louver in meters. Must be greater than 0.
+        offset: Distance to offset louvers from the aperture in meters. Default is 0.
+        angle: Angle of louvers in degrees (0 = horizontal). Default is 0.
+        contour_vector: 2D vector [x, y] defining louver direction. Default is [0, 1].
+        flip_start_side: If True, start louvers from the opposite side. Default is False.
+        indoor: If True, create indoor shades. If False, create outdoor shades. Default is False.
+        tolerance: Geometric tolerance in meters. Default is 0.01.
+        max_count: Maximum number of louvers to create. Optional limit.
+        base_name: Base name for generated shade identifiers.
+    
+    Returns:
+        dict: Dictionary containing success status, results list, and not_found list.
+    
+    Example:
+        add_louvers_by_distance_between(["Window_1"], distance=0.2, depth=0.3)
     """
     if manager.model is None:
         return {
@@ -315,6 +373,27 @@ def add_louvers_by_count(
 ) -> dict:
     """
     Add shading louvers to apertures to achieve target louver count.
+    
+    This tool creates a specific number of louvers evenly distributed across
+    the aperture height.
+    
+    Args:
+        aperture_identifiers: List of aperture identifiers to add louvers to.
+        louver_count: Number of louvers to create. Must be a positive integer.
+        depth: Depth of each louver in meters. Must be greater than 0.
+        offset: Distance to offset louvers from the aperture in meters. Default is 0.
+        angle: Angle of louvers in degrees (0 = horizontal). Default is 0.
+        contour_vector: 2D vector [x, y] defining louver direction. Default is [0, 1].
+        flip_start_side: If True, start louvers from the opposite side. Default is False.
+        indoor: If True, create indoor shades. If False, create outdoor shades. Default is False.
+        tolerance: Geometric tolerance in meters. Default is 0.01.
+        base_name: Base name for generated shade identifiers.
+    
+    Returns:
+        dict: Dictionary containing success status, results list, and not_found list.
+    
+    Example:
+        add_louvers_by_count(["Window_1"], louver_count=5, depth=0.3)
     """
     if manager.model is None:
         return {

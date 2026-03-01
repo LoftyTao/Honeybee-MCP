@@ -129,12 +129,36 @@ def load_model_from_shared_memory(name: str = DEFAULT_NAME, cleanup_irrational: 
     Use this after the HB_Model_SharedMemory_Writer component in Grasshopper
     has written a model to shared memory.
     
+    The tool also detects special signals:
+    - "clear" signal: When Grasshopper Reader has cleared its preview
+    - "write" signal: When Grasshopper Writer has written a new model
+    
     Args:
-        name: Shared memory name (must match the name used in Grasshopper)
-        cleanup_irrational: Boolean to clean irrational geometry (Default: False)
+        name: Shared memory name (must match the name used in Grasshopper).
+            Default is "hb_model_shared".
+        cleanup_irrational: Boolean to clean irrational geometry from the model.
+            Typical cases removed include Face3Ds with fewer than 3 vertices,
+            Rooms with no Face geometry, etc. (Default: False)
     
     Returns:
-        Dictionary with model statistics and status
+        dict: Dictionary containing:
+            - success (bool): Whether the model was loaded successfully
+            - message (str): Status message
+            - display_name (str): Model display name
+            - floor_area (float): Total floor area in m²
+            - rooms_count (int): Number of rooms in the model
+            - outdoor_shades_count (int): Number of outdoor shades
+            - orphaned_faces_count (int): Number of orphaned faces
+            - orphaned_shades_count (int): Number of orphaned shades
+            - orphaned_apertures_count (int): Number of orphaned apertures
+            - orphaned_doors_count (int): Number of orphaned doors
+            - writer_signal (bool): True if model was written by Grasshopper Writer
+            - cleared (bool): True if clear signal was detected
+            - error (str): Error message if loading failed
+    
+    Example:
+        load_model_from_shared_memory("my_model")
+        load_model_from_shared_memory()  # Uses default name
     """
     try:
         model_dict, message, signal_type = read_model_from_mmap(name)
@@ -192,12 +216,24 @@ def save_model_to_shared_memory(name: str = DEFAULT_NAME) -> dict:
     
     This tool writes the current model to shared memory so that
     Grasshopper can read it using the HB_Model_SharedMemory_Reader component.
+    The model is serialized to JSON and stored in a memory-mapped file.
     
     Args:
-        name: Shared memory name (must match the name used in Grasshopper)
+        name: Shared memory name (must match the name used in Grasshopper).
+            Default is "hb_model_shared".
     
     Returns:
-        Dictionary with status and model statistics
+        dict: Dictionary containing:
+            - success (bool): Whether the model was saved successfully
+            - message (str): Status message with file size
+            - display_name (str): Model display name
+            - rooms_count (int): Number of rooms in the model
+            - hint (str): Instructions for reading in Grasshopper
+            - error (str): Error message if saving failed
+    
+    Example:
+        save_model_to_shared_memory("my_model")
+        save_model_to_shared_memory()  # Uses default name
     """
     try:
         if manager.model is None:
@@ -241,12 +277,20 @@ def clear_shared_memory_model(name: str = DEFAULT_NAME) -> dict:
     Clear and remove the shared memory segment.
     
     Use this to free up shared memory after you're done with model exchange.
+    This deletes the memory-mapped file from the temp directory.
     
     Args:
-        name: Shared memory name to clear
+        name: Shared memory name to clear. Default is "hb_model_shared".
     
     Returns:
-        Dictionary with status
+        dict: Dictionary containing:
+            - success (bool): Whether the shared memory was cleared
+            - message (str): Status message
+            - error (str): Error message if clearing failed
+    
+    Example:
+        clear_shared_memory_model("my_model")
+        clear_shared_memory_model()  # Uses default name
     """
     try:
         success = clear_mmap_file(name)
@@ -266,11 +310,29 @@ def check_shared_memory_status(name: str = DEFAULT_NAME) -> dict:
     """
     Check if there is a model in shared memory.
     
+    This tool inspects the shared memory segment and returns information
+    about its contents, including signal types (clear/write) and model size.
+    
     Args:
-        name: Shared memory name to check
+        name: Shared memory name to check. Default is "hb_model_shared".
     
     Returns:
-        Dictionary with status information
+        dict: Dictionary containing:
+            - exists (bool): Whether shared memory exists
+            - signal_type (str): "clear", "write", or None
+            - size_bytes (int): Size of data in bytes (if model exists)
+            - size_kb (float): Size in kilobytes
+            - size_mb (float): Size in megabytes
+            - name (str): Shared memory name
+            - path (str): Full path to the memory-mapped file
+            - writer_timestamp (str): Timestamp when model was written (for write signal)
+            - model_name (str): Model name (for clear signal)
+            - message (str): Status message
+            - error (str): Error message if check failed
+    
+    Example:
+        check_shared_memory_status("my_model")
+        check_shared_memory_status()  # Uses default name
     """
     try:
         map_path = get_map_path(name)
@@ -337,11 +399,26 @@ def cleanup_shared_memory_cache() -> dict:
     """
     Clean up old shared memory cache files.
     
-    Keeps only the most recent MAX_CACHE_FILES files.
-    Removes files older than CACHE_AGE_HOURS.
+    This tool removes old memory-mapped files from the temp directory to
+    free up disk space. It keeps only the most recent files and removes
+    files older than the configured age threshold.
+    
+    Cleanup Rules:
+    - Keeps only the most recent MAX_CACHE_FILES (default: 5) files
+    - Removes files older than CACHE_AGE_HOURS (default: 24 hours)
+    - Files are sorted by modification time (oldest first for removal)
     
     Returns:
-        Dictionary with cleanup status and details.
+        dict: Dictionary containing:
+            - success (bool): Whether cleanup was successful
+            - kept_files (int): Number of files kept
+            - removed_files (int): Number of files removed
+            - removed_details (list): Details of removed files (name, age, size)
+            - message (str): Status message
+            - error (str): Error message if cleanup failed
+    
+    Example:
+        cleanup_shared_memory_cache()
     """
     return cleanup_old_cache_files()
 

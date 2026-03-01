@@ -157,15 +157,42 @@ def _apply_properties_by_orientation(targets, constructions, modifiers, prop_che
 # ==============================================================================
 @mcp.tool()
 def apply_opaque_attributes(
-    construction_identifiers: list[str] = None,
-    modifier_identifiers: list[str] = None,
-    face_identifiers: list[str] = None,
-    door_identifiers: list[str] = None,
-    room_identifiers: list[str] = None
+    construction_identifiers: list = None,
+    modifier_identifiers: list = None,
+    face_identifiers: list = None,
+    door_identifiers: list = None,
+    room_identifiers: list = None
 ) -> dict:
     """
     Apply Opaque Constructions (Energy) or Modifiers (Radiance).
-    Targets: Faces, Doors, or Exterior Walls of Rooms.
+    
+    This tool applies opaque constructions and/or modifiers to faces, doors, or
+    exterior walls of rooms. Supports orientation-based assignment where multiple
+    constructions are applied based on cardinal direction (N, E, S, W, etc.).
+    
+    Args:
+        construction_identifiers: List of opaque construction names to apply.
+            Use search_properties with category="Construction" to find options.
+            If one construction: applies to all targets.
+            If multiple: applies based on orientation (N, E, S, W, etc.).
+        modifier_identifiers: List of Radiance modifier names to apply.
+            Use search_properties with category="Modifier" to find options.
+            Same orientation logic as constructions.
+        face_identifiers: List of face identifiers to apply properties to.
+        door_identifiers: List of door identifiers to apply properties to.
+        room_identifiers: List of room identifiers. Applies to exterior walls only.
+            If no targets specified, defaults to all rooms.
+    
+    Returns:
+        dict: Dictionary containing:
+            - status (str): "success" or "skipped"
+            - updated_count (int): Number of objects updated
+            - message (str): Status message (if skipped)
+    
+    Example:
+        apply_opaque_attributes(construction_identifiers=["ConcreteWall"])
+        apply_opaque_attributes(construction_identifiers=["NorthWall", "SouthWall", "EastWall", "WestWall"])
+        apply_opaque_attributes(room_identifiers=["Room_1"], construction_identifiers=["BrickWall"])
     """
     if not manager.model: raise ValueError("Model is not loaded.")
     
@@ -205,16 +232,43 @@ def apply_opaque_attributes(
 # ==============================================================================
 @mcp.tool()
 def apply_window_attributes(
-    construction_identifiers: list[str] = None,
-    modifier_identifiers: list[str] = None,
-    aperture_identifiers: list[str] = None,
-    door_identifiers: list[str] = None,
-    face_identifiers: list[str] = None,
-    room_identifiers: list[str] = None
+    construction_identifiers: list = None,
+    modifier_identifiers: list = None,
+    aperture_identifiers: list = None,
+    door_identifiers: list = None,
+    face_identifiers: list = None,
+    room_identifiers: list = None
 ) -> dict:
     """
     Apply Window Constructions (Energy) or Modifiers (Radiance).
-    Targets: Apertures, Glass Doors, or Child Apertures of Faces/Rooms.
+    
+    This tool applies window constructions and/or modifiers to apertures, glass doors,
+    or child apertures of faces/rooms. Supports orientation-based assignment where
+    multiple constructions are applied based on cardinal direction.
+    
+    Args:
+        construction_identifiers: List of window construction names to apply.
+            Use search_properties with category="Construction" to find options.
+            If one construction: applies to all targets.
+            If multiple: applies based on orientation (N, E, S, W, etc.).
+        modifier_identifiers: List of Radiance modifier names for glass.
+            Use search_properties with category="Modifier" to find options.
+        aperture_identifiers: List of aperture identifiers to apply properties to.
+        door_identifiers: List of glass door identifiers to apply properties to.
+        face_identifiers: List of face identifiers. Applies to child apertures.
+        room_identifiers: List of room identifiers. Applies to apertures on exterior walls.
+            If no targets specified, defaults to all rooms.
+    
+    Returns:
+        dict: Dictionary containing:
+            - status (str): "success" or "skipped"
+            - updated_count (int): Number of objects updated
+            - message (str): Status message (if skipped)
+    
+    Example:
+        apply_window_attributes(construction_identifiers=["DoubleGlazed"])
+        apply_window_attributes(construction_identifiers=["NorthGlazing", "SouthGlazing", "EastGlazing", "WestGlazing"])
+        apply_window_attributes(room_identifiers=["Room_1"], construction_identifiers=["LowEWindow"])
     """
     if not manager.model: raise ValueError("Model is not loaded.")
 
@@ -258,17 +312,45 @@ def apply_window_attributes(
 # ==============================================================================
 @mcp.tool()
 def apply_shade_attributes(
-    construction_identifiers: list[str] = None,
-    modifier_identifiers: list[str] = None,
-    shade_identifiers: list[str] = None,
-    aperture_identifiers: list[str] = None,
-    door_identifiers: list[str] = None,
-    face_identifiers: list[str] = None,
-    room_identifiers: list[str] = None
+    construction_identifiers: list = None,
+    modifier_identifiers: list = None,
+    shade_identifiers: list = None,
+    aperture_identifiers: list = None,
+    door_identifiers: list = None,
+    face_identifiers: list = None,
+    room_identifiers: list = None
 ) -> dict:
     """
     Apply Shade Constructions (Energy) or Modifiers (Radiance).
-    Targets: Shades directly, or recursively attached to parents.
+    
+    This tool applies shade constructions and/or modifiers to shading elements.
+    Shades can be targeted directly or recursively through their parent objects
+    (apertures, doors, faces, rooms). Supports orientation-based assignment.
+    
+    Args:
+        construction_identifiers: List of shade construction names to apply.
+            Use search_properties with category="Construction" to find options.
+            If one construction: applies to all targets.
+            If multiple: applies based on orientation (N, E, S, W, etc.).
+        modifier_identifiers: List of Radiance modifier names for shades.
+            Use search_properties with category="Modifier" to find options.
+        shade_identifiers: List of shade identifiers to apply properties to directly.
+        aperture_identifiers: List of aperture identifiers. Applies to attached shades.
+        door_identifiers: List of door identifiers. Applies to attached shades.
+        face_identifiers: List of face identifiers. Applies to attached shades.
+        room_identifiers: List of room identifiers. Applies to all attached shades.
+            If no targets specified, defaults to all rooms and orphaned shades.
+    
+    Returns:
+        dict: Dictionary containing:
+            - status (str): "success" or "skipped"
+            - updated_count (int): Number of objects updated
+            - message (str): Status message (if skipped)
+    
+    Example:
+        apply_shade_attributes(construction_identifiers=["MetalShade"])
+        apply_shade_attributes(shade_identifiers=["Overhang_1"], modifier_identifiers=["MetalMaterial"])
+        apply_shade_attributes(room_identifiers=["Room_1"], construction_identifiers=["LouverConstruction"])
     """
     if not manager.model: raise ValueError("Model is not loaded.")
 

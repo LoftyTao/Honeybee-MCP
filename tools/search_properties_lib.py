@@ -41,7 +41,7 @@ CONSTRUCTION_TYPES = ('SteelFramed', 'WoodFramed', 'Mass', 'Metal Building')
 @mcp.tool()
 def search_properties(
     category: str,
-    keywords: list[str] = None,
+    keywords: list = None,
     vintage: str = None,
     climate_zone: str = None,
     construction_type: str = None,
@@ -51,17 +51,47 @@ def search_properties(
     """
     Search for various Honeybee properties including Constructions, Modifiers, 
     Program Types, and Construction Sets.
-
+    
+    This tool searches the Honeybee library for available properties that can be
+    applied to model elements. Use this to find valid identifiers before applying
+    them with other tools.
+    
     Args:
-        category: Search target. Options: 
-                  'Construction', 'ConstructionSet', 'ProgramType', 
-                  'Modifier', 'ModifierSet'.
-        keywords: List of words to filter results (e.g. ["Office", "Open"]).
-        vintage: Standard year (e.g. 'ASHRAE_2019', '2019'). Used for ConstrSet/Program.
-        climate_zone: Climate zone number (1-8). Used for ConstructionSet.
-        construction_type: 'SteelFramed', 'WoodFramed', 'Mass', 'Metal Building'.
-        building_program: Building type (e.g. 'Office', 'School'). Used for ProgramType.
-        exact_match: If True, treats keywords as a joined phrase.
+        category: Search target category. Options:
+            - "Construction": Search for opaque, window, and shade constructions
+            - "ConstructionSet": Generate construction set identifier
+            - "ProgramType": Search for program types (loads, schedules)
+            - "Modifier": Search for Radiance modifiers (materials)
+            - "ModifierSet": Search for Radiance modifier sets
+        keywords: List of words to filter results. Case-insensitive partial match.
+            Example: ["Office", "Open"] matches "Office_Open_Plan"
+        vintage: Standard year for code compliance. Options:
+            "ASHRAE_2019", "ASHRAE_2016", "ASHRAE_2013", "ASHRAE_2010",
+            or short form: "2019", "2016", etc.
+            Used for ConstructionSet and ProgramType searches.
+        climate_zone: ASHRAE climate zone number (1-8). Can include letter suffix
+            like "4A" or just "4". Required for ConstructionSet search.
+        construction_type: Building construction type for ConstructionSet.
+            Options: "SteelFramed", "WoodFramed", "Mass", "Metal Building".
+        building_program: Building type for ProgramType search.
+            Examples: "Office", "School", "Hospital", "Retail", "Residential".
+            Use this to narrow down program types by building category.
+        exact_match: If True, keywords are joined and matched as a phrase.
+            If False (default), keywords are matched individually (OR logic).
+    
+    Returns:
+        dict: Dictionary containing:
+            - status (str): "success" or "error"
+            - category (str): The search category
+            - results (list/dict): Matching items or categorized results
+            - count (int): Number of results (for list results)
+            - message (str): Error message (if status is "error")
+    
+    Example:
+        search_properties(category="Construction", keywords=["Concrete"])
+        search_properties(category="ConstructionSet", climate_zone="4", vintage="2019")
+        search_properties(category="ProgramType", building_program="Office")
+        search_properties(category="Modifier", keywords=["glass"])
     """
     
     if filter_array_by_keywords is None:

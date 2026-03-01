@@ -40,6 +40,47 @@ def query_model(
 ) -> dict:
     """
     Query various properties and objects from the loaded model.
+    
+    This tool retrieves information about the currently loaded Honeybee model.
+    You can query for object identifiers, counts, and geometric properties.
+    Multiple properties can be queried in a single call.
+    
+    Args:
+        identifier: Return the model identifier string.
+        display_name: Return the model display name.
+        rooms: Return room identifiers or count.
+        faces: Return face identifiers or count.
+        apertures: Return aperture identifiers or count.
+        doors: Return door identifiers or count.
+        shades: Return all shade identifiers or count.
+        shade_meshes: Return shade mesh identifiers or count.
+        indoor_shades: Return indoor shade identifiers or count.
+        outdoor_shades: Return outdoor shade identifiers or count.
+        orphaned_faces: Return orphaned face identifiers or count.
+        orphaned_shades: Return orphaned shade identifiers or count.
+        orphaned_apertures: Return orphaned aperture identifiers or count.
+        orphaned_doors: Return orphaned door identifiers or count.
+        stories: Return the list of story names.
+        volume: Return the total model volume in m³.
+        floor_area: Return the total floor area in m².
+        exposed_area: Return the total exposed area in m².
+        exterior_wall_area: Return the exterior wall area in m².
+        exterior_roof_area: Return the exterior roof area in m².
+        exterior_aperture_area: Return the total exterior aperture area in m².
+        exterior_wall_aperture_area: Return the exterior wall aperture area in m².
+        exterior_skylight_aperture_area: Return the exterior skylight aperture area in m².
+        return_count: If True, return counts instead of identifier lists for objects.
+            (Default: False)
+    
+    Returns:
+        dict: Dictionary containing requested properties. Each property is only
+            included if its corresponding flag is True. Object queries return
+            either {"identifiers": [...]} or {"count": N} based on return_count.
+    
+    Example:
+        query_model(identifier=True, display_name=True, rooms=True)
+        query_model(floor_area=True, volume=True)
+        query_model(rooms=True, return_count=True)  # Returns count only
     """
     result = {}
 

@@ -18,15 +18,13 @@ def query_doors(
     display_name: bool = False,
     boundary_condition: bool = False,
     is_glass: bool = False,
-    indoor_shades: bool = False,
-    outdoor_shades: bool = False,
+    is_exterior: bool = False,
+    has_parent: bool = False,
     parent: bool = False,
     top_level_parent: bool = False,
-    has_parent: bool = False,
     geometry: bool = False,
     vertices: bool = False,
     upper_left_vertices: bool = False,
-    triangulated_mesh3d: bool = False,
     normal: bool = False,
     center: bool = False,
     area: bool = False,
@@ -36,13 +34,56 @@ def query_doors(
     tilt: bool = False,
     altitude: bool = False,
     azimuth: bool = False,
-    is_exterior: bool = False,
+    indoor_shades: bool = False,
+    outdoor_shades: bool = False,
     type_color: bool = False,
     bc_color: bool = False,
+    triangulated_mesh3d: bool = False,
     return_count: bool = False
 ) -> dict:
     """
     Query various properties for multiple doors.
+    
+    This tool retrieves geometric, topological, and physical properties for
+    the specified doors. Multiple properties can be queried in a single call.
+    
+    Args:
+        door_identifiers: List of door identifiers to query.
+        identifier: Return the door identifier string.
+        display_name: Return the door display name.
+        boundary_condition: Return the boundary condition (Outdoors, Surface).
+        is_glass: Return True if door is a glass door (has glazing).
+        is_exterior: Return True if door is on an exterior face.
+        has_parent: Return True if door has a parent face.
+        parent: Return the parent face identifier.
+        top_level_parent: Return the top-level parent (room) identifier.
+        geometry: Return the door geometry string representation.
+        vertices: Return list of vertex coordinates [[x,y,z], ...].
+        upper_left_vertices: Return vertices starting from upper-left corner.
+        normal: Return the normal vector [x, y, z].
+        center: Return the center point [x, y, z].
+        area: Return the door area in m².
+        perimeter: Return the door perimeter in m.
+        min: Return the minimum bounding box coordinates [x, y, z].
+        max: Return the maximum bounding box coordinates [x, y, z].
+        tilt: Return the tilt angle in degrees (0=up, 180=down).
+        altitude: Return the altitude angle in degrees.
+        azimuth: Return the azimuth angle in degrees (0=North, 90=East).
+        indoor_shades: Return indoor shade identifiers or count.
+        outdoor_shades: Return outdoor shade identifiers or count.
+        type_color: Return the color associated with door type.
+        bc_color: Return the color associated with boundary condition.
+        triangulated_mesh3d: Return a triangulated mesh representation.
+        return_count: If True, return counts instead of identifier lists for shades.
+            Default is False.
+    
+    Returns:
+        dict: Dictionary mapping door identifiers to their queried properties.
+            Each door entry contains only the requested properties.
+    
+    Example:
+        query_doors(["Door_1"], area=True, is_glass=True)
+        query_doors(["Door_1", "Door_2"], boundary_condition=True)
     """
     result = {}
 

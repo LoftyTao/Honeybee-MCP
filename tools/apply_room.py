@@ -24,19 +24,48 @@ def apply_room_attributes(
     program_type_identifier: str = None,
     is_conditioned: bool = None,
     reset_loads: bool = False,
-    room_identifiers: list[str] = None
+    room_identifiers: list = None
 ) -> dict:
     """
     Apply Construction Set, Modifier Set, Program Type, or conditioning status to specific rooms.
     
+    This tool applies energy and radiance properties to rooms. You can apply one or
+    multiple attributes in a single call. Use search_properties to find available
+    construction sets, modifier sets, and program types.
+    
     Args:
         construction_set_identifier: Name of the Construction Set to apply.
-        modifier_set_identifier: Name of the Modifier Set to apply.
+            Construction sets define wall, floor, roof, and window constructions.
+            Use search_properties with category="ConstructionSet" to find options.
+        modifier_set_identifier: Name of the Modifier Set to apply for Radiance.
+            Modifier sets define material properties for daylight simulation.
+            Use search_properties with category="ModifierSet" to find options.
         program_type_identifier: Name of the Program Type to apply.
-        is_conditioned: Boolean. If True, adds default HVAC (Ideal Air) to unconditioned rooms. 
-                        If False, removes HVAC system (makes room unconditioned).
-        reset_loads: If True, resets all loads to match the Program Type.
-        room_identifiers: List of room IDs to apply changes to. If None, applies to all rooms.
+            Program types define loads, schedules, and setpoints for the space.
+            Use search_properties with category="ProgramType" to find options.
+        is_conditioned: Control HVAC conditioning status:
+            - True: Add default Ideal Air system to unconditioned rooms
+            - False: Remove HVAC system (make room unconditioned)
+            - None: Do not change conditioning status
+        reset_loads: If True and program_type_identifier is set, reset all room
+            loads (people, lighting, equipment, etc.) to match the program type.
+            If False, existing overridden loads are preserved. Default is False.
+        room_identifiers: List of room IDs to apply changes to. If None or empty,
+            applies to all rooms in the model.
+    
+    Returns:
+        dict: Dictionary containing:
+            - status (str): "success" or "skipped"
+            - updated_room_count (int): Number of rooms modified
+            - conditioning_changes (int): Number of rooms with HVAC changes
+            - applied_attributes (dict): Attributes that were applied
+            - warnings (list): Any warnings about overridden loads
+            - target_scope (str): "specific_rooms" or "all_rooms"
+    
+    Example:
+        apply_room_attributes(program_type_identifier="Office_Open")
+        apply_room_attributes(construction_set_identifier="Default", room_identifiers=["Room_1"])
+        apply_room_attributes(is_conditioned=True, reset_loads=True)
     """
     if not manager.model:
         raise ValueError("Model is not loaded.")
