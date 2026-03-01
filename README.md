@@ -6,6 +6,8 @@ Honeybee-MCP is a sophisticated Model Context Protocol (MCP) server designed to 
 
 The primary objective of Honeybee-MCP is to provide a seamless integration layer for manipulating HBJSON and HBpkl files within AI-augmented design environments. It abstracts the underlying complexities of the honeybee-core libraries, offering a set of high-level tools that allow an AI to "understand" and "modify" 3D building models. 
 
+> **Note:** This MCP server only supports **local deployment**. 
+
 ## Documentation
 
 For a comprehensive tutorial on how to use Honeybee-MCP, please refer to the [Tutorial.pdf](src/docs/Tutorial.pdf). 
@@ -136,17 +138,25 @@ Honeybee-MCP provides Grasshopper components for real-time model exchange betwee
 
 ### Components
 
-Two Grasshopper Python components are provided in `src/grasshopper/`:
+Two Grasshopper components are provided:
 
 | Component | File | Description |
 |-----------|------|-------------|
-| **HB-MCP Writer** | `HB-MCP Writer.py` | Write Honeybee Model to shared memory |
-| **HB-MCP Reader** | `HB-MCP Reader.py` | Read Honeybee Model from shared memory |
+| **HB-MCP Writer** | `HB-MCP Writer.ghuser` | Write Honeybee Model to shared memory |
+| **HB-MCP Reader** | `HB-MCP Reader.ghuser` | Read Honeybee Model from shared memory (manual & auto modes) |
 
 ### Installation
 
-1. Copy `HB-MCP Writer.py` and `HB-MCP Reader.py` to your Grasshopper components folder or use them directly in a Python Script component.
-2. The components will appear under `HB-MCP → 0 :: Mcp` category in Grasshopper.
+1. **Using .ghuser files (Recommended):**
+   - The `.ghuser` files are located in `grasshopper/user_object/`
+   - In Grasshopper, go to `File → Special Folders → User Object Folder`
+   - Copy `HB-MCP Reader.ghuser` and `HB-MCP Writer.ghuser` to this folder
+   - Restart Grasshopper - components will appear under `HB-MCP → 0 :: Mcp` category
+
+2. **Using Python Script component:**
+   - Source code is available in `grasshopper/src/`
+   - Create a Python Script component in Grasshopper
+   - Copy the contents of `HB-MCP Reader.py` or `HB-MCP Writer.py` into the component
 
 ### Usage Workflow
 
@@ -200,13 +210,16 @@ Two Grasshopper Python components are provided in `src/grasshopper/`:
 | Input | Type | Description |
 |-------|------|-------------|
 | `_name` | String | Shared memory name |
-| `_read` | Boolean | Set to True to read |
+| `_read` | Boolean | Set to True for manual read |
+| `_interval_` | Integer | Check interval in ms (default: 500) |
+| `run_` | Boolean | Set to True for auto-monitoring |
 | `clear_` | Boolean | Set to True to clear after reading |
 
 | Output | Type | Description |
 |--------|------|-------------|
 | `report` | List | Status messages |
 | `model` | Model | Honeybee Model object |
+| `updated` | Boolean | True when model was just updated (auto mode) |
 
 ## Project Architecture
 
@@ -237,16 +250,25 @@ Honeybee-MCP/
 │   ├── apply_room.py         # Room-level attribute application
 │   ├── shared_memory.py      # Shared memory management
 │   ├── shared_memory_tools.py # Shared memory MCP tools
+│   ├── version_control.py    # Version control system
+│   ├── version_tools.py      # Version control MCP tools
 │   ├── hvac_config.json      # HVAC configuration presets
 │   └── search_properties_lib.py # Library property search
-├── src/                  # Default directory for source files and outputs
-│   ├── resource/         # Project resources (images, etc.)
-│   │   └── Honeybee-MCP.png
-│   ├── sample/           # Sample HBJSON files
-│   │   └── Revit_Sample.hbjson
-│   └── grasshopper/      # Grasshopper components
-│       ├── HB-MCP Writer.py
-│       └── HB-MCP Reader.py
+├── grasshopper/          # Grasshopper integration
+│   ├── src/              # Source code for components
+│   │   ├── HB-MCP Reader.py
+│   │   └── HB-MCP Writer.py
+│   └── user_object/      # Compiled .ghuser components
+│       ├── HB-MCP Reader.ghuser
+│       └── HB-MCP Writer.ghuser
+└── src/                  # Default directory for source files and outputs
+    ├── docs/             # Documentation
+    │   ├── Tutorial.pdf
+    │   └── Tutorial.typ
+    ├── resource/         # Project resources (images, etc.)
+    │   └── Honeybee-MCP.png
+    └── sample/           # Sample HBJSON files
+        └── Revit_Sample.hbjson
 ```
 
 ## Future Plan
@@ -325,3 +347,21 @@ The currently available and tested MCP tools：
 | Tool Name | Description |
 | :--- | :--- |
 | search_properties | Search for Constructions, Modifiers, Program Types, and Construction Sets in library |
+
+### Version Control Tools
+
+| Tool Name | Description |
+| :--- | :--- |
+| save_version | Manually save current model as a version snapshot |
+| list_model_versions | List all saved versions for a model |
+| load_model_version | Load a specific version of a model |
+| undo_last_change | Undo to the previous version (restore before last change) |
+| clear_version_history | Clear version history for a model or all models |
+| cleanup_cache | Clean up old shared memory cache files |
+
+**Note:** Version control is automatic. Every time a model is loaded or saved, a version is automatically recorded. Maximum 10 versions are kept in memory.
+
+**Shared Memory Cache Management:**
+- Automatic cleanup when loading models (keeps most recent 5 files)
+- Removes cache files older than 24 hours
+- Manual cleanup available via `cleanup_cache` tool

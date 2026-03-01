@@ -87,6 +87,13 @@ def get_model_name(model):
 def write_to_mmap(model_dict, name):
     """Write model dictionary to memory-mapped file."""
     try:
+        from datetime import datetime
+        
+        model_dict["_writer_signal"] = {
+            "written": True,
+            "timestamp": datetime.now().isoformat()
+        }
+        
         json_data = json.dumps(model_dict, ensure_ascii=False)
         json_bytes = json_data.encode('utf-8')
         data_size = len(json_bytes)

@@ -1,8 +1,8 @@
 from tools.mcp_context import mcp
 
 import tools
+from tools.version_tools import register_version_tools
 
 if __name__ == "__main__":
-    # Start the MCP server
-    # This will listen for incoming MCP connections and handle tool requests
+    register_version_tools(mcp)
     mcp.run()

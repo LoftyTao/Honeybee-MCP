@@ -25,6 +25,8 @@ from tools.load_model import manager
 MAP_NAME_PREFIX = "hb_model_"
 HEADER_SIZE = 8
 DEFAULT_NAME = "hb_model_shared"
+MAX_CACHE_FILES = 5
+CACHE_AGE_HOURS = 24
 
 
 def get_map_path(name: str) -> str:
@@ -38,29 +40,37 @@ def read_model_from_mmap(name: str = DEFAULT_NAME):
     Read model dictionary from memory-mapped file.
     
     Returns:
-        Tuple of (model_dict or None, message)
+        Tuple of (model_dict or None, message, signal_type)
+        signal_type: "clear", "write", or None
     """
     try:
         map_path = get_map_path(name)
         
         if not os.path.exists(map_path):
-            return None, "Shared memory '{}' not found. Run Grasshopper Writer first.".format(name)
+            return None, "Shared memory '{}' not found. Run Grasshopper Writer first.".format(name), None
         
         with open(map_path, 'rb') as f:
             header = f.read(HEADER_SIZE)
             data_size = struct.unpack('<Q', header)[0]
             
             if data_size == 0:
-                return None, "No data in shared memory"
+                return None, "No data in shared memory", None
             
             json_bytes = f.read(data_size)
             json_data = json_bytes.decode('utf-8')
             model_dict = json.loads(json_data)
             
-        return model_dict, "Model read from shared memory '{}'".format(name)
+        if model_dict.get("cleared") == True:
+            return None, "Clear signal received from Grasshopper", "clear"
+        
+        writer_signal = model_dict.pop("_writer_signal", None)
+        if writer_signal and writer_signal.get("written") == True:
+            return model_dict, "Model read from shared memory '{}' (writer signal)".format(name), "write"
+        
+        return model_dict, "Model read from shared memory '{}'".format(name), None
         
     except Exception as e:
-        return None, "Error: {}".format(str(e))
+        return None, "Error: {}".format(str(e)), None
 
 
 def write_model_to_mmap(model_dict: dict, name: str = DEFAULT_NAME):
@@ -127,7 +137,15 @@ def load_model_from_shared_memory(name: str = DEFAULT_NAME, cleanup_irrational: 
         Dictionary with model statistics and status
     """
     try:
-        model_dict, message = read_model_from_mmap(name)
+        model_dict, message, signal_type = read_model_from_mmap(name)
+        
+        if signal_type == "clear":
+            manager.model = None
+            return {
+                "success": True,
+                "cleared": True,
+                "message": "Model cleared from MCP memory (clear signal from Grasshopper)"
+            }
         
         if model_dict is None:
             return {
@@ -138,7 +156,11 @@ def load_model_from_shared_memory(name: str = DEFAULT_NAME, cleanup_irrational: 
         
         manager.load_from_dict(model_dict, cleanup_irrational=cleanup_irrational)
         
-        return {
+        from .version_control import save_version_auto
+        model_name = manager.model.display_name or manager.model.identifier
+        save_version_auto(manager.model.to_dict(), model_name, "Loaded from shared memory")
+        
+        result = {
             "success": True,
             "message": message,
             "display_name": manager.model.display_name,
@@ -150,6 +172,11 @@ def load_model_from_shared_memory(name: str = DEFAULT_NAME, cleanup_irrational: 
             "orphaned_apertures_count": len(manager.model.orphaned_apertures),
             "orphaned_doors_count": len(manager.model.orphaned_doors)
         }
+        
+        if signal_type == "write":
+            result["writer_signal"] = True
+        
+        return result
         
     except Exception as e:
         return {
@@ -180,6 +207,11 @@ def save_model_to_shared_memory(name: str = DEFAULT_NAME) -> dict:
             }
         
         model_dict = manager.model.to_dict()
+        
+        from .version_control import save_version_auto
+        model_name = manager.model.display_name or manager.model.identifier
+        save_version_auto(model_dict, model_name, "Saved to shared memory")
+        
         success, message = write_model_to_mmap(model_dict, name)
         
         if success:
@@ -259,8 +291,33 @@ def check_shared_memory_status(name: str = DEFAULT_NAME) -> dict:
                     "message": "No model found in shared memory '{}'".format(name)
                 }
             
+            json_bytes = f.read(data_size)
+            json_data = json_bytes.decode('utf-8')
+            model_dict = json.loads(json_data)
+            
+            if model_dict.get("cleared") == True:
+                return {
+                    "exists": True,
+                    "signal_type": "clear",
+                    "model_name": model_dict.get("model_name", "unknown"),
+                    "message": "Clear signal from Grasshopper - model should be cleared"
+                }
+            
+            writer_signal = model_dict.get("_writer_signal", {})
+            if writer_signal.get("written") == True:
+                return {
+                    "exists": True,
+                    "signal_type": "write",
+                    "writer_timestamp": writer_signal.get("timestamp", ""),
+                    "size_bytes": data_size,
+                    "size_kb": round(data_size / 1024, 2),
+                    "name": name,
+                    "message": "Model written by Grasshopper (writer signal detected)"
+                }
+            
             return {
                 "exists": True,
+                "signal_type": None,
                 "size_bytes": data_size,
                 "size_kb": round(data_size / 1024, 2),
                 "size_mb": round(data_size / (1024 * 1024), 2),
@@ -271,5 +328,92 @@ def check_shared_memory_status(name: str = DEFAULT_NAME) -> dict:
     except Exception as e:
         return {
             "exists": False,
+            "error": str(e)
+        }
+
+
+@mcp.tool()
+def cleanup_shared_memory_cache() -> dict:
+    """
+    Clean up old shared memory cache files.
+    
+    Keeps only the most recent MAX_CACHE_FILES files.
+    Removes files older than CACHE_AGE_HOURS.
+    
+    Returns:
+        Dictionary with cleanup status and details.
+    """
+    return cleanup_old_cache_files()
+
+
+def cleanup_old_cache_files():
+    """
+    Clean up old shared memory cache files.
+    
+    Keeps only the most recent MAX_CACHE_FILES files.
+    Removes files older than CACHE_AGE_HOURS.
+    """
+    import time
+    
+    temp_dir = tempfile.gettempdir()
+    current_time = time.time()
+    age_threshold = CACHE_AGE_HOURS * 3600
+    
+    try:
+        files_info = []
+        
+        for filename in os.listdir(temp_dir):
+            if filename.startswith(MAP_NAME_PREFIX) and filename.endswith(".mmap"):
+                map_path = os.path.join(temp_dir, filename)
+                
+                try:
+                    file_time = os.path.getmtime(map_path)
+                    file_age = current_time - file_time
+                    file_size = os.path.getsize(map_path)
+                    
+                    files_info.append({
+                        "name": filename,
+                        "path": map_path,
+                        "age_hours": file_age / 3600,
+                        "size_kb": round(file_size / 1024, 2)
+                    })
+                except:
+                    pass
+        
+        files_info.sort(key=lambda x: x["age_hours"], reverse=True)
+        
+        if len(files_info) > MAX_CACHE_FILES:
+            files_to_keep = files_info[:MAX_CACHE_FILES]
+            files_to_remove = files_info[MAX_CACHE_FILES:]
+            
+            for file_info in files_to_remove:
+                try:
+                    os.remove(file_info["path"])
+                except:
+                    pass
+            
+            return {
+                "success": True,
+                "kept_files": len(files_to_keep),
+                "removed_files": len(files_to_remove),
+                "removed_details": [
+                    {
+                        "name": f["name"],
+                        "age_hours": round(f["age_hours"], 2),
+                        "size_kb": f["size_kb"]
+                    }
+                    for f in files_to_remove
+                ]
+            }
+        
+        return {
+            "success": True,
+            "kept_files": len(files_info),
+            "removed_files": 0,
+            "message": "Cache cleanup completed"
+        }
+    except Exception as e:
+        return {
+            "success": False,
             "error": str(e)
         }
