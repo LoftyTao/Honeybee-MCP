@@ -182,8 +182,39 @@ cleanup_shared_memory_cache()
 1. In Grasshopper: Connect model to HB_Model_SharedMemory_Writer
 2. In AI IDE: load_model()  # Auto-detects Grasshopper model
 3. Edit model as needed
-4. save_model_to_shared_memory()
+   Note: All edits are automatically saved back to shared memory!
+4. (Optional) save_model_to_shared_memory() - for backup or different name
 5. In Grasshopper: HB_Model_SharedMemory_Reader reads the result
+```
+
+### Auto-Save Feature
+
+**Important**: When a model is loaded from Grasshopper shared memory, all editing operations automatically save the model back to shared memory. This provides a seamless workflow without requiring manual save calls.
+
+**Auto-save behavior:**
+- Automatically triggers after each edit operation
+- Saves to the same shared memory name used for loading
+- Creates version snapshots for undo capability
+- Only applies to models loaded from shared memory
+
+**When to use manual save:**
+- Save model from file to shared memory
+- Save to a different shared memory name
+- Create backups with different names
+- Manually control save timing
+
+**Auto-save response:**
+When auto-save triggers, editing tools return an additional `auto_save` field:
+```python
+{
+  "success": True,
+  "message": "Apertures added successfully",
+  "auto_save": {
+    "auto_saved": True,
+    "message": "Model saved to shared memory successfully",
+    "source_name": "hb_model_shared"
+  }
+}
 ```
 
 ## Shared Memory Names

@@ -21,6 +21,7 @@ None
 |-------|------|-------------|
 | `success` | bool | Whether the operation was successful |
 | `message` | str | Status message |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 | `error` | str | Error message if operation failed |
 
 **Example:**
@@ -42,6 +43,7 @@ None
 |-------|------|-------------|
 | `success` | bool | Whether the operation was successful |
 | `message` | str | Status message |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 | `error` | str | Error message if operation failed |
 
 **Example:**
@@ -63,6 +65,7 @@ None
 |-------|------|-------------|
 | `success` | bool | Whether the operation was successful |
 | `message` | str | Status message |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 | `error` | str | Error message if operation failed |
 
 **Example:**
@@ -90,6 +93,7 @@ Remove shades from specified rooms.
 | `message` | str | Summary of processed rooms |
 | `results` | list | List of results for each room |
 | `not_found` | list | Room identifiers not found |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 
 **Example:**
 ```python
@@ -120,6 +124,7 @@ Remove objects from specified faces.
 | `message` | str | Summary of processed faces |
 | `results` | list | List of results for each face |
 | `not_found` | list | Face identifiers not found |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 
 **Example:**
 ```python
@@ -141,7 +146,10 @@ remove_face_objects(["Face_3"], outdoor_shades=True, indoor_shades=True)
 │     - add_louvers()                                                 │
 │     - remove_face_objects()                                         │
 │     - apply_room_attributes()                                       │
-│  4. save_model_to_shared_memory() ← Save back to Grasshopper        │
+│     Note: Auto-save triggers automatically for shared memory models!  │
+│  4. VERIFY CHANGES                                          │
+│     └─► query_model() to confirm                            │
+│  5. (Optional) save_model_to_shared_memory() ← Manual backup       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -151,21 +159,21 @@ remove_face_objects(["Face_3"], outdoor_shades=True, indoor_shades=True)
 ```python
 load_model()
 remove_all_apertures()
-save_model_to_shared_memory()
+# Auto-save triggers automatically for shared memory models
 ```
 
 ### Remove Windows from Specific Faces
 ```python
 load_model()
 remove_face_objects(["South_Face", "North_Face"], apertures=True)
-save_model_to_shared_memory()
+# Auto-save triggers automatically for shared memory models
 ```
 
 ### Clear All Shades from Rooms
 ```python
 load_model()
 remove_room_shades(["Room_1", "Room_2"])
-save_model_to_shared_memory()
+# Auto-save triggers automatically for shared memory models
 ```
 
 ### Reset Model (Remove All Openings)
@@ -174,7 +182,7 @@ load_model()
 remove_all_apertures()
 remove_all_doors()
 remove_all_shades()
-save_model_to_shared_memory()
+# Auto-save triggers automatically for shared memory models
 ```
 
 ## Notes
@@ -183,4 +191,5 @@ save_model_to_shared_memory()
 - Removing apertures also removes attached shades
 - Use query tools to identify target identifiers
 - Save version before major changes for undo capability
-- Save back to Grasshopper after editing
+- **Auto-save**: When model is loaded from Grasshopper shared memory, all editing operations automatically save changes back to shared memory. No manual save required for normal workflow!
+- Manual save is still available for creating backups or saving to different shared memory names

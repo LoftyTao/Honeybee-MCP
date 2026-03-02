@@ -8,7 +8,7 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 from .mcp_context import mcp
-from tools.load_model import manager
+from tools.load_model import manager, auto_save_to_shared_memory
 
 # --- Core Dependencies ---
 from honeybee.boundarycondition import Outdoors
@@ -198,7 +198,13 @@ def apply_opaque_attributes(
         return []
 
     updated = _apply_properties_by_orientation(all_targets, constrs, mods, _can_have_props, _get_children)
-    return {"status": "success", "updated_count": updated}
+    result = {"status": "success", "updated_count": updated}
+    
+    auto_save_result = auto_save_to_shared_memory()
+    if auto_save_result:
+        result["auto_save"] = auto_save_result
+    
+    return result
 
 
 # ==============================================================================
@@ -252,7 +258,13 @@ def apply_window_attributes(
         return []
 
     updated = _apply_properties_by_orientation(all_targets, constrs, mods, _can_have_props, _get_children)
-    return {"status": "success", "updated_count": updated}
+    result = {"status": "success", "updated_count": updated}
+    
+    auto_save_result = auto_save_to_shared_memory()
+    if auto_save_result:
+        result["auto_save"] = auto_save_result
+    
+    return result
 
 
 # ==============================================================================
@@ -314,4 +326,10 @@ def apply_shade_attributes(
         return shades
 
     updated = _apply_properties_by_orientation(all_targets, constrs, mods, _can_have_props, _get_children)
-    return {"status": "success", "updated_count": updated}
+    result = {"status": "success", "updated_count": updated}
+    
+    auto_save_result = auto_save_to_shared_memory()
+    if auto_save_result:
+        result["auto_save"] = auto_save_result
+    
+    return result

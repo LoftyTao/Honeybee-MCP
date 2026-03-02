@@ -156,6 +156,8 @@ def load_model_from_shared_memory(name: str = None, cleanup_irrational: bool = F
             }
         
         manager.load_from_dict(model_dict, cleanup_irrational=cleanup_irrational)
+        manager.source = "shared_memory"
+        manager.source_name = name
         
         from .version_control import save_version_auto
         model_name = manager.model.identifier
@@ -365,7 +367,7 @@ def cleanup_old_cache_files():
                 except:
                     pass
         
-        files_info.sort(key=lambda x: x["age_hours"], reverse=True)
+        files_info.sort(key=lambda x: x["age_hours"])
         
         if len(files_info) > MAX_CACHE_FILES:
             files_to_keep = files_info[:MAX_CACHE_FILES]

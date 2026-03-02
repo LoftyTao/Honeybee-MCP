@@ -9,7 +9,7 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 from .mcp_context import mcp
-from tools.load_model import manager
+from tools.load_model import manager, auto_save_to_shared_memory
 
 from honeybee.typing import clean_and_id_ep_string
 from honeybee.altnumber import autosize, no_limit
@@ -282,7 +282,7 @@ def apply_hvac(
     if updated_count == 0:
         return {"status": "skipped", "message": "No valid target rooms found."}
 
-    return {
+    result = {
         "status": "success",
         "category": system_category,
         "system_type": final_sys_key,
@@ -290,3 +290,9 @@ def apply_hvac(
         "updated_room_count": updated_count,
         "warnings": warnings if warnings else None
     }
+    
+    auto_save_result = auto_save_to_shared_memory()
+    if auto_save_result:
+        result["auto_save"] = auto_save_result
+    
+    return result

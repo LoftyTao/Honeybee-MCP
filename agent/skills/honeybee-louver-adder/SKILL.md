@@ -35,6 +35,7 @@ Add a series of shading louvers to apertures.
 | `message` | str | Summary of processed apertures |
 | `results` | list | List of results for each aperture with aperture_identifier, shade_count, shade_identifiers, error |
 | `not_found` | list | Aperture identifiers not found |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 
 **Example:**
 ```python
@@ -73,6 +74,7 @@ Add a specific number of shading louvers to apertures.
 | `message` | str | Summary of processed apertures |
 | `results` | list | List of results for each aperture |
 | `not_found` | list | Aperture identifiers not found |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 
 **Example:**
 ```python
@@ -107,6 +109,7 @@ Add shading louvers to apertures with target spacing between them.
 | `message` | str | Summary of processed apertures |
 | `results` | list | List of results for each aperture |
 | `not_found` | list | Aperture identifiers not found |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 
 **Example:**
 ```python
@@ -118,7 +121,8 @@ add_louvers_by_distance_between(["Window_1"], distance=0.2, depth=0.3)
 ```
 1. load_model()
 2. add_louvers(["Window_1"], depth=0.3, louver_count=5)
-3. save_model_to_shared_memory()
+   Note: Auto-save triggers automatically for shared memory models
+3. (Optional) save_model_to_shared_memory() - for backup only
 ```
 
 ## Notes
@@ -129,3 +133,5 @@ add_louvers_by_distance_between(["Window_1"], distance=0.2, depth=0.3)
 - Offset moves louvers away from the aperture plane
 - Use aperture identifiers from the loaded model
 - Louvers are created as shade objects attached to apertures
+- **Auto-save**: When model is loaded from Grasshopper shared memory, all louver addition operations automatically save changes back to shared memory. No manual save required for normal workflow!
+- Manual save is still available for creating backups or saving to different shared memory names

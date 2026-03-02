@@ -1,6 +1,22 @@
 from .mcp_context import mcp
-from tools.load_model import manager
+from tools.load_model import manager, auto_save_to_shared_memory
 from honeybee.face import Face
+
+
+def _wrap_result_with_auto_save(result_dict):
+    """
+    Wrap result dict with auto-save information if applicable.
+    
+    Args:
+        result_dict: The original result dictionary from the tool
+        
+    Returns:
+        dict: Result dict with auto_save information added if applicable
+    """
+    auto_save_result = auto_save_to_shared_memory()
+    if auto_save_result:
+        result_dict["auto_save"] = auto_save_result
+    return result_dict
 
 @mcp.tool()
 def add_aperture_by_width_height(
@@ -84,12 +100,12 @@ def add_aperture_by_width_height(
                 "error": str(e)
             })
 
-    return {
+    return _wrap_result_with_auto_save({
         "success": True,
         "message": f"Processed {len(results)} faces, {len(not_found)} faces not found.",
         "results": results,
         "not_found": not_found
-    }
+    })
 
 
 @mcp.tool()
@@ -204,12 +220,12 @@ def add_apertures_by_ratio_rectangle(
                 "error": str(e)
             })
 
-    return {
+    return _wrap_result_with_auto_save({
         "success": True,
         "message": f"Processed {len(results)} faces, {len(not_found)} faces not found.",
         "results": results,
         "not_found": not_found
-    }
+    })
 
 
 @mcp.tool()
@@ -294,12 +310,12 @@ def add_apertures_by_ratio(
                 "error": str(e)
             })
 
-    return {
+    return _wrap_result_with_auto_save({
         "success": True,
         "message": f"Processed {len(results)} faces, {len(not_found)} faces not found.",
         "results": results,
         "not_found": not_found
-    }
+    })
 
 
 @mcp.tool()
@@ -401,12 +417,12 @@ def add_apertures_by_ratio_gridded(
                 "error": str(e)
             })
 
-    return {
+    return _wrap_result_with_auto_save({
         "success": True,
         "message": f"Processed {len(results)} faces, {len(not_found)} faces not found.",
         "results": results,
         "not_found": not_found
-    }
+    })
 
 
 @mcp.tool()
@@ -516,12 +532,12 @@ def add_apertures_by_width_height_rectangle(
                 "error": str(e)
             })
 
-    return {
+    return _wrap_result_with_auto_save({
         "success": True,
         "message": f"Processed {len(results)} faces, {len(not_found)} faces not found.",
         "results": results,
         "not_found": not_found
-    }
+    })
 
 
 @mcp.tool()
@@ -618,9 +634,9 @@ def remove_face_objects(
             "removed_objects": removed_objects
         })
 
-    return {
+    return _wrap_result_with_auto_save({
         "success": True,
         "message": f"Processed {len(results)} faces, {len(not_found)} faces not found.",
         "results": results,
         "not_found": not_found
-    }
+    })

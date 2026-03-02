@@ -129,6 +129,8 @@ The model manager is the core of the entire system, using the singleton pattern 
 class Model_Manager:
     def __init__(self):
         self.model = None  # Currently loaded honeybee Model object
+        self.source = None  # Model source: "file", "dict", or "shared_memory"
+        self.source_name = None  # Source name: file path or shared memory name
     
     def load(self, hb_file: str, cleanup_irrational: bool = False):
         """Load model from file"""
@@ -147,13 +149,38 @@ When calling `load_model()`, the system loads models in the following priority:
 1. **Grasshopper Shared Memory** (highest priority)
    - Automatically detects models in shared memory
    - If present, loads from shared memory first
+   - Sets `manager.source = "shared_memory"`
 
 2. **Specified File Path**
    - If `hb_file` parameter is provided
    - Loads from HBJSON or HBpkl file
+   - Sets `manager.source = "file"`
 
 3. **Error Handling**
    - Returns error message and hints when no model is available
+
+### 3.3 Auto-Save Feature
+
+**Important**: When a model is loaded from Grasshopper shared memory, all editing operations automatically save the model back to shared memory.
+
+**How it works:**
+- System tracks model source via `manager.source`
+- If `manager.source == "shared_memory"`, editing tools automatically call `auto_save_to_shared_memory()`
+- Auto-save writes to the same shared memory name used for loading
+- Auto-save also creates version snapshots for undo capability
+
+**Auto-save behavior:**
+| Model Source | Auto-Save | Manual Save Required |
+|-------------|-------------|-------------------|
+| shared_memory | ✅ Automatic | Optional (for different names) |
+| file | ❌ No | ✅ Required |
+| dict | ❌ No | ✅ Required |
+
+**When to use manual save:**
+- Save model from file to shared memory
+- Save to a different shared memory name
+- Create backups with different names
+- Manually control save timing
 
 ### 3.3 Model State Check
 
@@ -342,19 +369,30 @@ The system automatically manages shared memory cache:
 The version control system automatically records versions at:
 
 - Model loading
-- Model saving
+- Model saving (including auto-save from shared memory)
 - Manual `save_version` call
 
 **Version Limit:** Maximum 10 versions per model (implemented using deque)
 
-### 6.2 Version Control Tools
+**Auto-Save Integration:**
+When editing a model loaded from shared memory, each auto-save operation creates a version snapshot with description "Auto-saved after edit". This enables undo capability even when using auto-save feature.
 
-| Tool Name | Description |
-|---------|---------|
-| `save_version` | Manually save version snapshot |
-| `list_model_versions` | List all versions of a model |
-| `load_model_version` | Load a specific version |
-| `undo_last_change` | Undo to previous version |
+### 6.2 Version Control Tool
+
+A unified `version_control` tool handles all version operations through the `action` parameter:
+
+| Action | Description | Required Parameters |
+|--------|-------------|---------------------|
+| `list` | List all versions for a model | model_name (optional) |
+| `save` | Save current model as a version snapshot | description (optional) |
+| `load` | Load a specific version | model_name, version_id |
+| `undo` | Undo to previous version | model_name (optional) |
+| `redo` | Redo last undone change | model_name (optional) |
+| `compare` | Compare two versions | model_name, version_id, version_id_2 |
+| `info` | Get detailed info about a version | model_name, version_id |
+| `delete` | Delete a specific version | model_name, version_id |
+| `clear` | Clear version history | model_name (optional) |
+| `cleanup` | Clean up old cache files | none |
 
 ### 6.3 Version Data Structure
 
@@ -365,7 +403,10 @@ version_data = {
     "description": "Added windows", # Optional description
     "model_dict": {...},           # Complete model dictionary
     "rooms_count": 5,
-    "outdoor_shades_count": 2
+    "outdoor_shades_count": 2,
+    "apertures_count": 10,         # Number of windows
+    "doors_count": 2,              # Number of doors
+    "shade_meshes_count": 1        # Number of shade meshes
 }
 ```
 
@@ -373,15 +414,24 @@ version_data = {
 
 ```python
 # View version history
-list_model_versions("MyModel")
+version_control("list", model_name="MyModel")
 # Returns: {"versions": [{"version": "003", ...}, {"version": "002", ...}, ...]}
 
+# Save version with description
+version_control("save", description="Before removing windows")
+
 # Undo last change
-undo_last_change("MyModel")
-# Returns: {"success": True, "version_id": "002", "model_dict": {...}}
+version_control("undo")
+# Returns: {"success": True, "version_id": "002", ...}
+
+# Redo last undone change
+version_control("redo")
 
 # Load specific version
-load_model_version("MyModel", "001")
+version_control("load", model_name="MyModel", version_id="001")
+
+# Compare two versions
+version_control("compare", model_name="MyModel", version_id="001", version_id_2="003")
 ```
 
 ---
@@ -410,7 +460,7 @@ The skills system provides structured workflow guidance for AI Agents. Each skil
 | `honeybee-apply-properties` | Apply properties | `apply_*` |
 | `honeybee-search-lib` | Search library | `search_properties` |
 | `honeybee-grasshopper-sync` | Grasshopper sync | Shared memory tools |
-| `honeybee-version-control` | Version control | `save_version`, `undo_last_change` |
+| `honeybee-version-control` | Version control | `version_control` |
 
 ### 7.3 Skill File Format
 
@@ -458,14 +508,21 @@ description: "Skill description for AI to understand when to invoke"
 │                                                              │
 │  4. EDIT MODEL                                              │
 │     └─► add_* / remove_* / apply_*                          │
+│     Note: If loaded from shared memory, auto-save triggers!       │
 │                                                              │
 │  5. VERIFY CHANGES                                          │
 │     └─► query_model() to confirm                            │
 │                                                              │
-│  6. SAVE MODEL                                              │
+│  6. SAVE MODEL (Optional for shared memory models)           │
 │     └─► save_model() / save_model_to_shared_memory()        │
+│     Note: Auto-save already handled for shared memory models      │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**Auto-Save Feature:**
+- Models loaded from Grasshopper shared memory are automatically saved after each edit
+- No manual save required for normal workflow
+- Manual save is still available for backups or different names
 
 ### 8.2 Grasshopper Collaboration Workflow
 
@@ -481,13 +538,23 @@ description: "Skill description for AI to understand when to invoke"
 │  AI IDE Side:                                               │
 │  4. load_model() - auto-detects from shared memory          │
 │  5. Modify model using MCP tools                            │
-│  6. save_model_to_shared_memory()                           │
+│     Note: Edits are automatically saved back to shared memory!   │
+│  6. (Optional) save_model_to_shared_memory() - for backup     │
 │                                                              │
 │  Grasshopper Side:                                          │
 │  7. HB-MCP Reader reads modified model                      │
 │  8. Continue design workflow                                │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**Key Feature - Auto-Save:**
+When model is loaded from Grasshopper shared memory, all editing operations automatically save changes back to shared memory. No manual save required for normal workflow!
+
+**When to use manual save:**
+- Save model from file to shared memory
+- Save to a different shared memory name
+- Create backups with different names
+- Manually control save timing
 
 ### 8.3 Error Recovery Workflow
 

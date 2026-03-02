@@ -16,12 +16,18 @@ class Model_Manager:
 
     def __init__(self):
         self.model = None
+        self.source = None
+        self.source_name = None
 
     def load(self, hb_file: str, cleanup_irrational: bool = False):
         self.model = Model.from_file(hb_file, cleanup_irrational=cleanup_irrational)
+        self.source = "file"
+        self.source_name = hb_file
 
     def load_from_dict(self, data: dict, cleanup_irrational: bool = False):
         self.model = Model.from_dict(data, cleanup_irrational=cleanup_irrational)
+        self.source = "dict"
+        self.source_name = data.get("identifier", "unknown")
 
 
 def _check_grasshopper_models():
@@ -75,6 +81,54 @@ def _check_grasshopper_models():
 
 
 manager = Model_Manager()
+
+
+def auto_save_to_shared_memory():
+    """
+    Automatically save model to shared memory if it was loaded from shared memory.
+    
+    This function checks if the current model was loaded from Grasshopper shared memory,
+    and if so, automatically saves it back to the same shared memory location.
+    
+    Returns:
+        dict: Result of the save operation, or None if auto-save is not applicable
+    """
+    if manager.model is None:
+        return None
+    
+    if manager.source != "shared_memory":
+        return None
+    
+    if manager.source_name is None:
+        return None
+    
+    try:
+        from .shared_memory_tools import write_model_to_mmap
+        from .version_control import save_version_auto
+        
+        model_dict = manager.model.to_dict()
+        
+        model_name = manager.model.identifier
+        save_version_auto(model_dict, model_name, "Auto-saved after edit")
+        
+        success, message = write_model_to_mmap(model_dict, manager.source_name)
+        
+        if success:
+            return {
+                "auto_saved": True,
+                "message": message,
+                "source_name": manager.source_name
+            }
+        else:
+            return {
+                "auto_saved": False,
+                "error": message
+            }
+    except Exception as e:
+        return {
+            "auto_saved": False,
+            "error": str(e)
+        }
 
 
 @mcp.tool()

@@ -8,7 +8,7 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 from .mcp_context import mcp
-from tools.load_model import manager
+from tools.load_model import manager, auto_save_to_shared_memory
 
 # Import library functions
 from honeybee_energy.lib.constructionsets import construction_set_by_identifier
@@ -120,7 +120,7 @@ def apply_room_attributes(
                 warnings.append(msg)
 
     # --- 4. Construct Return Object ---
-    return {
+    result = {
         "status": "success",
         "updated_room_count": len(target_rooms),
         "conditioning_changes": updated_conditioned_status if is_conditioned is not None else 0,
@@ -133,3 +133,9 @@ def apply_room_attributes(
         "warnings": warnings if warnings else None,
         "target_scope": "specific_rooms" if room_identifiers else "all_rooms"
     }
+    
+    auto_save_result = auto_save_to_shared_memory()
+    if auto_save_result:
+        result["auto_save"] = auto_save_result
+    
+    return result

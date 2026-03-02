@@ -21,6 +21,7 @@ None
 |-------|------|-------------|
 | `success` | bool | Whether the operation was successful |
 | `message` | str | Status message |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 | `error` | str | Error message if operation failed |
 
 **Example:**
@@ -48,6 +49,7 @@ Remove shades from specified rooms.
 | `message` | str | Summary of processed rooms |
 | `results` | list | List of results for each room with room_identifier, removed_count, shade_type |
 | `not_found` | list | Room identifiers not found |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 
 **Example:**
 ```python
@@ -79,6 +81,7 @@ Remove shades from specific faces.
 | `message` | str | Summary of processed faces |
 | `results` | list | List of results for each face |
 | `not_found` | list | Face identifiers not found |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 
 **Example:**
 ```python
@@ -90,7 +93,8 @@ remove_face_objects(["South_Face"], outdoor_shades=True)
 ```
 1. load_model()
 2. remove_all_shades()
-3. save_model_to_shared_memory()
+   Note: Auto-save triggers automatically for shared memory models
+3. (Optional) save_model_to_shared_memory() - for backup only
 ```
 
 ## Notes
@@ -99,3 +103,5 @@ remove_face_objects(["South_Face"], outdoor_shades=True)
 - Removing apertures will also remove their attached shades
 - Use room-specific removal for selective editing
 - Operation is irreversible - save a backup if needed
+- **Auto-save**: When model is loaded from Grasshopper shared memory, all shade removal operations automatically save changes back to shared memory. No manual save required for normal workflow!
+- Manual save is still available for creating backups or saving to different shared memory names

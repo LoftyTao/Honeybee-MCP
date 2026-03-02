@@ -29,6 +29,7 @@ Add a rectangular aperture (window) at the center of each face.
 | `message` | str | Summary of processed faces |
 | `results` | list | List of results for each face with face_identifier, aperture_identifier, width, height, sill_height, error |
 | `not_found` | list | Face identifiers that were not found |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 
 **Example:**
 ```python
@@ -60,6 +61,7 @@ Add rectangular apertures to faces based on area ratio (WWR).
 | `message` | str | Summary of processed faces |
 | `results` | list | List of results for each face with face_identifier, ratio, aperture_count, aperture_identifiers, error |
 | `not_found` | list | Face identifiers not found |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 
 **Example:**
 ```python
@@ -89,6 +91,7 @@ Add apertures to faces based on area ratio.
 | `message` | str | Summary of processed faces |
 | `results` | list | List of results for each face |
 | `not_found` | list | Face identifiers not found |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 
 **Example:**
 ```python
@@ -120,6 +123,7 @@ Add apertures to faces in a grid pattern based on area ratio.
 | `message` | str | Summary of processed faces |
 | `results` | list | List of results for each face |
 | `not_found` | list | Face identifiers not found |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 
 **Example:**
 ```python
@@ -152,6 +156,7 @@ Add repeated rectangular apertures to faces based on width and height.
 | `message` | str | Summary of processed faces |
 | `results` | list | List of results for each face |
 | `not_found` | list | Face identifiers not found |
+| `auto_save` | dict | Auto-save information (if model from shared memory) |
 
 **Example:**
 ```python
@@ -166,7 +171,8 @@ add_apertures_by_width_height_rectangle(["Face_2"], 2.0, 1.2, 0.8, 0.5)
 ```
 1. load_model()
 2. add_apertures_by_ratio(["South_Face"], 0.4)
-3. save_model_to_shared_memory()
+   Note: Auto-save triggers automatically for shared memory models
+3. (Optional) save_model_to_shared_memory() - for backup only
 ```
 
 ## Notes
@@ -176,3 +182,5 @@ add_apertures_by_width_height_rectangle(["Face_2"], 2.0, 1.2, 0.8, 0.5)
 - Typical sill height is 0.9m (office) or 1.0m (residential)
 - Existing apertures on the face are not affected
 - Use face identifiers from the loaded model
+- **Auto-save**: When model is loaded from Grasshopper shared memory, all aperture addition operations automatically save changes back to shared memory. No manual save required for normal workflow!
+- Manual save is still available for creating backups or saving to different shared memory names

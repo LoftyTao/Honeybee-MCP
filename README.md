@@ -183,12 +183,43 @@ Two Grasshopper components are provided:
 2. **AI IDE:**
    - Use `load_model_from_shared_memory` to load the model
    - Modify the model using MCP tools
-   - Use `save_model_to_shared_memory` to save changes
+   - **Auto-save**: All edits are automatically saved back to shared memory when model is loaded from shared memory
+   - (Optional) Use `save_model_to_shared_memory` for manual backup or different names
 
 3. **Reader Component:**
    - Input: Connect `name` from Writer to `_name`
    - Input: Set `_read=True` to read from shared memory
    - Output: Modified Honeybee Model
+
+### Auto-Save Feature
+
+**Important**: When a model is loaded from Grasshopper shared memory, all editing operations automatically save the model back to shared memory. This provides a seamless workflow without requiring manual save calls.
+
+**Auto-save behavior:**
+- Automatically triggers after each edit operation
+- Saves to the same shared memory name used for loading
+- Creates version snapshots for undo capability
+- Only applies to models loaded from shared memory
+
+**When to use manual save:**
+- Save model from file to shared memory
+- Save to a different shared memory name
+- Create backups with different names
+- Manually control save timing
+
+**Auto-save response:**
+When auto-save triggers, editing tools return an additional `auto_save` field in their response:
+```python
+{
+  "success": True,
+  "message": "Apertures added successfully",
+  "auto_save": {
+    "auto_saved": True,
+    "message": "Model saved to shared memory successfully",
+    "source_name": "hb_model_shared"
+  }
+}
+```
 
 ### Component Details
 
@@ -290,13 +321,15 @@ The currently available and tested MCP tools：
 
 | Tool Name | Description |
 | :--- | :--- |
-| load_model | Load Honeybee model from HBJSON/HBpkl file |
+| load_model | Load Honeybee model from HBJSON/HBpkl file (auto-detects Grasshopper shared memory) |
 | load_model_from_dict | Load model from dictionary representation |
 | load_model_from_shared_memory | Load model from shared memory (Grasshopper) |
 | save_model | Save current model to HBJSON file |
-| save_model_to_shared_memory | Save model to shared memory (Grasshopper) |
+| save_model_to_shared_memory | Save model to shared memory (Grasshopper) - optional when using auto-save |
 | check_shared_memory_status | Check if model exists in shared memory |
 | clear_shared_memory_model | Clear shared memory segment |
+
+**Note**: When a model is loaded from Grasshopper shared memory, all editing operations automatically save changes back to shared memory. Manual save is optional and useful for creating backups or saving to different names.
 
 ### Aperture Tools
 
@@ -352,12 +385,7 @@ The currently available and tested MCP tools：
 
 | Tool Name | Description |
 | :--- | :--- |
-| save_version | Manually save current model as a version snapshot |
-| list_model_versions | List all saved versions for a model |
-| load_model_version | Load a specific version of a model |
-| undo_last_change | Undo to the previous version (restore before last change) |
-| clear_version_history | Clear version history for a model or all models |
-| cleanup_cache | Clean up old shared memory cache files |
+| version_control | Unified version control tool with actions: list, save, load, undo, redo, compare, info, delete, clear, cleanup |
 
 **Note:** Version control is automatic. Every time a model is loaded or saved, a version is automatically recorded. Maximum 10 versions are kept in memory.
 

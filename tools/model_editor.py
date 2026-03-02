@@ -8,7 +8,7 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 from .mcp_context import mcp
-from tools.load_model import manager
+from tools.load_model import manager, auto_save_to_shared_memory
 
 @mcp.tool()
 def remove_all_apertures() -> dict:
@@ -25,10 +25,16 @@ def remove_all_apertures() -> dict:
 
     manager.model.remove_all_apertures()
 
-    return {
+    result = {
         "success": True,
         "message": "All apertures (Aperture) have been removed from the model."
     }
+    
+    auto_save_result = auto_save_to_shared_memory()
+    if auto_save_result:
+        result["auto_save"] = auto_save_result
+    
+    return result
 
 @mcp.tool()
 def remove_all_doors() -> dict:
@@ -45,10 +51,16 @@ def remove_all_doors() -> dict:
 
     manager.model.remove_all_doors()
 
-    return {
+    result = {
         "success": True,
         "message": "All doors (Door) have been removed from the model."
     }
+    
+    auto_save_result = auto_save_to_shared_memory()
+    if auto_save_result:
+        result["auto_save"] = auto_save_result
+    
+    return result
 
 
 @mcp.tool()
@@ -89,7 +101,7 @@ def remove_all_shades(shade_mesh_ids: list = None) -> dict:
         manager.model.remove_all_shades()
         manager.model.remove_shade_meshes()
         
-        return {
+        result = {
             "success": True,
             "message": "All shading elements have been removed from the model.",
             "removed": {
@@ -100,6 +112,12 @@ def remove_all_shades(shade_mesh_ids: list = None) -> dict:
                 "total": total_count
             }
         }
+        
+        auto_save_result = auto_save_to_shared_memory()
+        if auto_save_result:
+            result["auto_save"] = auto_save_result
+        
+        return result
     
     current_count = len(manager.model.shade_meshes)
     
@@ -124,7 +142,7 @@ def remove_all_shades(shade_mesh_ids: list = None) -> dict:
     if removed:
         manager.model.remove_shade_meshes(removed)
     
-    return {
+    result = {
         "success": True,
         "message": "Removed {} shade mesh(es) from the model.".format(len(removed)),
         "removed_count": len(removed),
@@ -132,3 +150,9 @@ def remove_all_shades(shade_mesh_ids: list = None) -> dict:
         "not_found": not_found,
         "remaining_count": len(manager.model.shade_meshes)
     }
+    
+    auto_save_result = auto_save_to_shared_memory()
+    if auto_save_result:
+        result["auto_save"] = auto_save_result
+    
+    return result

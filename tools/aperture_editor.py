@@ -1,6 +1,22 @@
 from .mcp_context import mcp
-from tools.load_model import manager
+from tools.load_model import manager, auto_save_to_shared_memory
 from honeybee.aperture import  Aperture
+
+
+def _wrap_result_with_auto_save(result_dict):
+    """
+    Wrap result dict with auto-save information if applicable.
+    
+    Args:
+        result_dict: The original result dictionary from the tool
+        
+    Returns:
+        dict: Result dict with auto_save information added if applicable
+    """
+    auto_save_result = auto_save_to_shared_memory()
+    if auto_save_result:
+        result_dict["auto_save"] = auto_save_result
+    return result_dict
 
 @mcp.tool()
 def add_louvers(
@@ -145,12 +161,12 @@ def add_louvers(
                 "error": str(e)
             })
 
-    return {
+    return _wrap_result_with_auto_save({
         "success": True,
         "message": f"Processed {len(results)} apertures, {len(not_found)} apertures not found.",
         "results": results,
         "not_found": not_found
-    }
+    })
 
 
 @mcp.tool()
@@ -296,12 +312,12 @@ def add_louvers_by_distance_between(
                 "error": str(e)
             })
 
-    return {
+    return _wrap_result_with_auto_save({
         "success": True,
         "message": f"Processed {len(results)} apertures, {len(not_found)} apertures not found.",
         "results": results,
         "not_found": not_found
-    }
+    })
 
 
 @mcp.tool()
@@ -437,9 +453,9 @@ def add_louvers_by_count(
                 "error": str(e)
             })
 
-    return {
+    return _wrap_result_with_auto_save({
         "success": True,
         "message": f"Processed {len(results)} apertures, {len(not_found)} apertures not found.",
         "results": results,
         "not_found": not_found
-    }
+    })
