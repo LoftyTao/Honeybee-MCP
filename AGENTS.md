@@ -49,6 +49,7 @@ Honeybee-MCP/
 ├── server.py              # Main entry point, initializes FastMCP server
 ├── requirements.txt       # Python dependencies
 ├── README.md              # Project documentation
+├── AGENTS.md              # This file - Agent working guide
 │
 ├── tools/                 # Core tools module
 │   ├── mcp_context.py     # MCP context management (FastMCP instance)
@@ -65,7 +66,22 @@ Honeybee-MCP/
 │   ├── src/               # Python source code
 │   └── user_object/       # Compiled .ghuser components
 │
-└── agent/skills/          # AI Agent skill definitions (13 skill modules)
+└── agent/skills/          # AI Agent skill definitions
+    └── Honeybee-MCP/
+        ├── SKILL.md       # Main skill entry point
+        ├── model-loader/  # Model loading skill
+        ├── model-saver/   # Model saving skill
+        ├── query/         # Query skill
+        ├── aperture-adder/    # Add windows skill
+        ├── aperture-remover/  # Remove windows skill
+        ├── louver-adder/      # Add louvers skill
+        ├── shade-remover/     # Remove shades skill
+        ├── door-editor/       # Door editing skill
+        ├── model-editor/      # General editing skill
+        ├── apply-properties/  # Property application skill
+        ├── search-lib/        # Library search skill
+        ├── grasshopper-sync/  # Grasshopper sync skill
+        └── version-control/   # Version control skill
 ```
 
 ---
@@ -182,7 +198,7 @@ When calling `load_model()`, the system loads models in the following priority:
 - Create backups with different names
 - Manually control save timing
 
-### 3.3 Model State Check
+### 3.4 Model State Check
 
 All tools should check the model state before execution:
 
@@ -442,9 +458,35 @@ version_control("compare", model_name="MyModel", version_id="001", version_id_2=
 
 The skills system provides structured workflow guidance for AI Agents. Each skill corresponds to a type of operation scenario.
 
-**Skills Directory**: `agent/skills/`
+**Skills Directory**: `agent/skills/Honeybee-MCP/`
 
-### 7.2 Available Skills
+**Main Entry Point**: `agent/skills/Honeybee-MCP/SKILL.md`
+
+### 7.2 Skill Hierarchy
+
+```
+agent/skills/Honeybee-MCP/
+├── SKILL.md                    # Main skill (honeybee-mcp)
+│                               # - Comprehensive toolkit overview
+│                               # - Skill selection guide
+│                               # - Quick examples for all operations
+│
+├── model-loader/SKILL.md       # Load models from files/GH
+├── model-saver/SKILL.md        # Save models to files
+├── query/SKILL.md              # Query model properties
+├── aperture-adder/SKILL.md     # Add windows/skylights
+├── aperture-remover/SKILL.md   # Remove windows
+├── louver-adder/SKILL.md       # Add louvers/overhangs
+├── shade-remover/SKILL.md      # Remove shades
+├── door-editor/SKILL.md        # Edit doors
+├── model-editor/SKILL.md       # General editing
+├── apply-properties/SKILL.md   # Apply constructions/HVAC
+├── search-lib/SKILL.md         # Search library
+├── grasshopper-sync/SKILL.md   # GH synchronization
+└── version-control/SKILL.md    # Undo/redo versions
+```
+
+### 7.3 Available Skills
 
 | Skill Name | Trigger Scenario | Main Tools |
 |---------|---------|---------|
@@ -462,7 +504,26 @@ The skills system provides structured workflow guidance for AI Agents. Each skil
 | `honeybee-grasshopper-sync` | Grasshopper sync | Shared memory tools |
 | `honeybee-version-control` | Version control | `version_control` |
 
-### 7.3 Skill File Format
+### 7.4 Skill Selection Guide
+
+When a user request is received, use this decision process:
+
+| User Intent | Skill to Invoke |
+|-------------|-----------------|
+| Load/import model | `honeybee-model-loader` |
+| Save/export model | `honeybee-model-saver` |
+| View model info | `honeybee-query` |
+| Add windows | `honeybee-aperture-adder` |
+| Remove windows | `honeybee-aperture-remover` |
+| Add louvers/shades | `honeybee-louver-adder` |
+| Remove shades | `honeybee-shade-remover` |
+| Edit doors | `honeybee-door-editor` |
+| Apply properties | `honeybee-apply-properties` |
+| Search library | `honeybee-search-lib` |
+| Sync with Grasshopper | `honeybee-grasshopper-sync` |
+| Undo/redo changes | `honeybee-version-control` |
+
+### 7.5 Skill File Format
 
 Each skill contains a `SKILL.md` file with the following format:
 
@@ -508,14 +569,14 @@ description: "Skill description for AI to understand when to invoke"
 │                                                              │
 │  4. EDIT MODEL                                              │
 │     └─► add_* / remove_* / apply_*                          │
-│     Note: If loaded from shared memory, auto-save triggers!       │
+│     Note: If loaded from shared memory, auto-save triggers! │
 │                                                              │
 │  5. VERIFY CHANGES                                          │
 │     └─► query_model() to confirm                            │
 │                                                              │
-│  6. SAVE MODEL (Optional for shared memory models)           │
+│  6. SAVE MODEL (Optional for shared memory models)          │
 │     └─► save_model() / save_model_to_shared_memory()        │
-│     Note: Auto-save already handled for shared memory models      │
+│     Note: Auto-save already handled for shared memory models│
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -538,8 +599,8 @@ description: "Skill description for AI to understand when to invoke"
 │  AI IDE Side:                                               │
 │  4. load_model() - auto-detects from shared memory          │
 │  5. Modify model using MCP tools                            │
-│     Note: Edits are automatically saved back to shared memory!   │
-│  6. (Optional) save_model_to_shared_memory() - for backup     │
+│     Note: Edits are automatically saved back to shared memory!│
+│  6. (Optional) save_model_to_shared_memory() - for backup   │
 │                                                              │
 │  Grasshopper Side:                                          │
 │  7. HB-MCP Reader reads modified model                      │
@@ -562,11 +623,11 @@ When model is loaded from Grasshopper shared memory, all editing operations auto
 ┌─────────────────────────────────────────────────────────────┐
 │                  Error Recovery Workflow                     │
 ├─────────────────────────────────────────────────────────────┤
-│  1. undo_last_change() - Restore previous version           │
+│  1. version_control("undo") - Restore previous version      │
 │                                                              │
 │  2. If undo unavailable:                                    │
-│     └─► list_model_versions()                               │
-│     └─► load_model_version(version_id)                      │
+│     └─► version_control("list")                             │
+│     └─► version_control("load", version_id="001")           │
 │                                                              │
 │  3. Re-apply changes carefully                              │
 └─────────────────────────────────────────────────────────────┘
@@ -694,7 +755,7 @@ add_apertures_by_ratio(face_identifiers=exterior_walls, ratio=0.4)
 # Step 4: Verify
 query_faces(exterior_walls, aperture_ratio=True)
 
-# Step 5: Save
+# Step 5: Save (auto-saved if from Grasshopper)
 save_model_to_shared_memory()
 ```
 
@@ -788,7 +849,7 @@ if not result.get("success"):
 
 # 2. Use version control to recover
 if critical_error:
-    undo_last_change(model_name)
+    version_control("undo")
 
 # 3. Reload model
 load_model_from_dict(version_data["model_dict"])
@@ -942,7 +1003,7 @@ query_room(["Room_1"], hvac_properties=True)
 ### Add Windows
 ```python
 add_apertures_by_ratio(faces, ratio=0.4)
-add_apertures_by_width_height(faces, width=2, height=1.5)
+add_aperture_by_width_height(faces, width=2, height=1.5)
 ```
 
 ### Add Shades
@@ -960,13 +1021,13 @@ apply_window_attributes(construction_identifiers=["DoubleGlazed"])
 
 ### Version Control
 ```python
-save_version(description="Before major changes")
-list_model_versions("MyModel")
-undo_last_change("MyModel")
+version_control("save", description="Before major changes")
+version_control("list", model_name="MyModel")
+version_control("undo")
 ```
 
 ---
 
-*Document Version: 1.0*
-*Last Updated: 2026*
+*Document Version: 1.1*
+*Last Updated: 2026-03*
 *Applicable to Honeybee-MCP beta version*

@@ -12,12 +12,15 @@ The primary objective of Honeybee-MCP is to provide a seamless integration layer
 
 For a comprehensive tutorial on how to use Honeybee-MCP, please refer to the [Tutorial.pdf](src/docs/Tutorial.pdf). 
 
+For AI Agents working guide, see [AGENTS.md](AGENTS.md).
+
 ### Quick Start Guide
 
 1. **Clone the repository** from [GitHub](https://github.com/LoftyTao/Honeybee-MCP).
 2. **Install an AI IDE** .(OpenCode, Cursor, VS Code, etc.)
 3. **Configure MCP** Automatically build the project through AI Agent.
-4. **Use prompts** to interact with your Honeybee models.
+4. **Configure Skills** Add the skills directory to your AI IDE configuration.
+5. **Use prompts** to interact with your Honeybee models.
 
 ## Technical Requirements and Installation
 
@@ -111,15 +114,23 @@ Create or edit the `.opencode/opencode.json` file in your project directory:
     "honeybee-mcp": {
       "type": "local",
       "command": [
-        //Note: The paths use relative paths from the project directory. If you're using a different virtual environment location, adjust the Python executable path accordingly.
-        "./Honeybee-MCP/venv/Scripts/python.exe",
-        "./Honeybee-MCP/venv/Scripts/python.exe/server.py"
+        "./venv/Scripts/python.exe",
+        "./server.py"
       ],
       "enabled": true
     }
+  },
+  "skills": {
+    "directories": [
+      "./agent/skills"
+    ]
   }
 }
 ```
+
+**Configuration Notes:**
+- `mcp.honeybee-mcp.command`: Path to Python executable and server.py
+- `skills.directories`: Path to the skills directory containing Honeybee-MCP skills
 
 ### Other AI IDEs
 
@@ -131,6 +142,175 @@ Honeybee-MCP is compatible with MCP-enabled IDEs including:
 - **Other AI IDE**
 
 For these IDEs, navigate to the MCP settings panel and add a new server. Configure the command to point to your Python executable (from the virtual environment) and the arguments to include the path to `server.py`.
+
+## Skills Configuration
+
+### What are Skills?
+
+Skills are structured documentation files that help AI Agents understand when and how to use specific tools. Honeybee-MCP includes a comprehensive skills system that provides:
+
+- **Workflow guidance** for common modeling tasks
+- **Tool selection criteria** based on user intent
+- **Quick examples** for rapid implementation
+- **Best practices** and error handling strategies
+
+### Skills Directory Structure
+
+```
+agent/skills/Honeybee-MCP/
+├── SKILL.md                    # Main skill entry point
+├── model-loader/SKILL.md       # Load models from files/GH
+├── model-saver/SKILL.md        # Save models to files
+├── query/SKILL.md              # Query model properties
+├── aperture-adder/SKILL.md     # Add windows/skylights
+├── aperture-remover/SKILL.md   # Remove windows
+├── louver-adder/SKILL.md       # Add louvers/overhangs
+├── shade-remover/SKILL.md      # Remove shades
+├── door-editor/SKILL.md        # Edit doors
+├── model-editor/SKILL.md       # General editing
+├── apply-properties/SKILL.md   # Apply constructions/HVAC
+├── search-lib/SKILL.md         # Search library
+├── grasshopper-sync/SKILL.md   # GH synchronization
+└── version-control/SKILL.md    # Undo/redo versions
+```
+
+### Configuring Skills in OpenCode
+
+To enable Honeybee-MCP skills in OpenCode, add the skills directory to your configuration:
+
+**Method 1: Project-level configuration (`.opencode/opencode.json`)**
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "honeybee-mcp": {
+      "type": "local",
+      "command": [
+        "./venv/Scripts/python.exe",
+        "./server.py"
+      ],
+      "enabled": true
+    }
+  },
+  "skills": {
+    "directories": [
+      "./agent/skills"
+    ]
+  }
+}
+```
+
+**Method 2: User-level configuration**
+
+For global access across all projects, you can configure skills in your user-level OpenCode settings:
+
+```json
+{
+  "skills": {
+    "directories": [
+      "C:/path/to/Honeybee-MCP/agent/skills"
+    ]
+  }
+}
+```
+
+### Configuring Skills in Other AI IDEs
+
+#### Cursor
+
+In Cursor, skills can be configured via the settings:
+
+1. Open Cursor Settings (`Ctrl+,` or `Cmd+,`)
+2. Navigate to **Features** → **Skills** or **Context**
+3. Add the skills directory path:
+   ```
+   C:\path\to\Honeybee-MCP\agent\skills
+   ```
+4. Restart Cursor to apply changes
+
+Alternatively, create a `.cursorrules` file in your project:
+
+```
+Skills Directory: ./agent/skills
+```
+
+#### VS Code (with MCP Extension)
+
+1. Install an MCP-compatible extension
+2. Open VS Code settings (`settings.json`)
+3. Add the skills configuration:
+
+```json
+{
+  "mcp.skills.directories": [
+    "${workspaceFolder}/agent/skills"
+  ]
+}
+```
+
+#### Trae
+
+Trae has native MCP and skills support:
+
+1. Open Trae Settings
+2. Navigate to **MCP Configuration**
+3. Add skills directory in the **Context** or **Skills** section
+4. Use the workspace-relative path: `./agent/skills`
+
+### Verifying Skills Configuration
+
+To verify that skills are properly configured, ask your AI Agent:
+
+```
+What skills are available for Honeybee-MCP?
+```
+
+The agent should be able to list and describe the available skills:
+
+| Skill Name | Description |
+|------------|-------------|
+| `honeybee-mcp` | Main skill - comprehensive toolkit overview |
+| `honeybee-model-loader` | Load models from files or Grasshopper |
+| `honeybee-model-saver` | Save models to files |
+| `honeybee-query` | Query model properties |
+| `honeybee-aperture-adder` | Add windows/skylights |
+| `honeybee-aperture-remover` | Remove windows |
+| `honeybee-louver-adder` | Add louvers/overhangs |
+| `honeybee-shade-remover` | Remove shades |
+| `honeybee-door-editor` | Edit doors |
+| `honeybee-model-editor` | General model editing |
+| `honeybee-apply-properties` | Apply constructions/HVAC |
+| `honeybee-search-lib` | Search library properties |
+| `honeybee-grasshopper-sync` | Grasshopper synchronization |
+| `honeybee-version-control` | Version control/undo-redo |
+
+### Using Skills Effectively
+
+Once skills are configured, the AI Agent will automatically:
+
+1. **Understand context** - Know which tools to use for specific tasks
+2. **Follow workflows** - Execute operations in the correct order
+3. **Handle errors** - Recover from issues using version control
+4. **Provide guidance** - Explain what's happening at each step
+
+**Example prompts that leverage skills:**
+
+```
+Load my model from Grasshopper and add 40% windows to south-facing walls
+```
+
+```
+Apply office program type and Ideal Air HVAC to all rooms
+```
+
+```
+Add louvers to all windows with 0.5m depth and 0.3m spacing
+```
+
+```
+Show me the model summary and window-to-wall ratios
+```
 
 ## Grasshopper Integration
 
@@ -172,6 +352,12 @@ Two Grasshopper components are provided:
 │   (Modified)    │ ◄─── │                 │ ◄─── │  Honeybee-MCP   │
 └─────────────────┘      └─────────────────┘      └─────────────────┘
 ```
+
+### Demo
+
+![Grasshopper and OpenCode CLI Interaction](src/resource/gh-sample.gif)
+
+*Demonstration of Grasshopper components interacting with OpenCode CLI for real-time model editing.*
 
 **Step-by-step:**
 
@@ -260,45 +446,50 @@ The repository is structured to separate the MCP protocol logic from the Honeybe
 Honeybee-MCP/
 ├── server.py              # Main entry point initializing the FastMCP server
 ├── requirements.txt       # Python dependencies
-├── README.md             # Project documentation
-├── tools/                # Modular directory containing individual Python scripts
+├── README.md              # Project documentation
+├── AGENTS.md              # AI Agent working guide
+├── tools/                 # Modular directory containing individual Python scripts
 │   ├── __init__.py
-│   ├── mcp_context.py    # MCP context management
-│   ├── load_model.py     # Model loading utilities
-│   ├── save_model.py     # Model saving utilities
-│   ├── query_model.py    # Model querying tools
-│   ├── query_room.py     # Room property queries
-│   ├── query_face.py     # Face property queries
-│   ├── query_aperture.py # Aperture property queries
-│   ├── query_door.py     # Door property queries
-│   ├── query_shade.py    # Shade property queries
-│   ├── aperture_editor.py    # Aperture manipulation tools
-│   ├── face_editor.py        # Face manipulation tools
-│   ├── room_editor.py        # Room manipulation tools
-│   ├── model_editor.py       # Model-level editing tools
-│   ├── apply_all_face.py     # Apply attributes to faces
-│   ├── apply_hvac.py         # HVAC system configuration
-│   ├── apply_room.py         # Room-level attribute application
-│   ├── shared_memory.py      # Shared memory management
+│   ├── mcp_context.py     # MCP context management
+│   ├── load_model.py      # Model loading utilities
+│   ├── save_model.py      # Model saving utilities
+│   ├── query_model.py     # Model querying tools
+│   ├── query_room.py      # Room property queries
+│   ├── query_face.py      # Face property queries
+│   ├── query_aperture.py  # Aperture property queries
+│   ├── query_door.py      # Door property queries
+│   ├── query_shade.py     # Shade property queries
+│   ├── aperture_editor.py     # Aperture manipulation tools
+│   ├── face_editor.py         # Face manipulation tools
+│   ├── room_editor.py         # Room manipulation tools
+│   ├── model_editor.py        # Model-level editing tools
+│   ├── apply_all_face.py      # Apply attributes to faces
+│   ├── apply_hvac.py          # HVAC system configuration
+│   ├── apply_room.py          # Room-level attribute application
+│   ├── shared_memory.py       # Shared memory management
 │   ├── shared_memory_tools.py # Shared memory MCP tools
-│   ├── version_control.py    # Version control system
-│   ├── version_tools.py      # Version control MCP tools
-│   ├── hvac_config.json      # HVAC configuration presets
+│   ├── version_control.py     # Version control system
+│   ├── version_tools.py       # Version control MCP tools
+│   ├── hvac_config.json       # HVAC configuration presets
 │   └── search_properties_lib.py # Library property search
-├── grasshopper/          # Grasshopper integration
-│   ├── src/              # Source code for components
+├── grasshopper/           # Grasshopper integration
+│   ├── src/               # Source code for components
 │   │   ├── HB-MCP Reader.py
 │   │   └── HB-MCP Writer.py
-│   └── user_object/      # Compiled .ghuser components
+│   └── user_object/       # Compiled .ghuser components
 │       ├── HB-MCP Reader.ghuser
 │       └── HB-MCP Writer.ghuser
-└── src/                  # Default directory for source files and outputs
-    ├── docs/             # Documentation
+├── agent/skills/          # AI Agent skill definitions
+│   └── Honeybee-MCP/
+│       ├── SKILL.md       # Main skill entry point
+│       └── ...            # 13 skill modules
+└── src/                   # Default directory for source files and outputs
+    ├── docs/              # Documentation
     │   ├── Tutorial.pdf
     │   └── Tutorial.typ
-    ├── resource/         # Project resources (images, etc.)
+    ├── resource/          # Project resources (images, etc.)
     │   └── Honeybee-MCP.png
-    └── sample/           # Sample HBJSON files
+    └── sample/            # Sample HBJSON files
         └── Revit_Sample.hbjson
 ```
 
@@ -306,7 +497,7 @@ Honeybee-MCP/
 
 At present, the Honeybee-MCP has relatively complete functions for querying, editing and applying the model. I expect to add more functions in the near future.
 
-- **Agent Skill and Prompts Templates.**
+- **Agent Skill and Prompts Templates.** ✅ (Completed)
 - **More tools for creating and editing Honeybee Properties.**
 - **The model exporter and the local preview method**
 - **From AI Agent to Simulation Capabilities**
