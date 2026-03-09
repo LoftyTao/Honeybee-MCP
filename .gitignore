@@ -183,3 +183,6 @@ cython_debug/
 .opencode/
 .trae
 AGENTS_ZH.md
+.codex
+.gitignore
+tests/

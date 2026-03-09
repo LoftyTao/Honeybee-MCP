@@ -1,0 +1,4 @@
+interface:
+  display_name: "Honeybee Model Loader"
+  short_description: "Help with Honeybee Model Loader tasks"
+  default_prompt: "Use $honeybee-model-loader to load a Honeybee model before any edit or query workflow."

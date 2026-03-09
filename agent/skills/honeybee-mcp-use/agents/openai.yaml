@@ -1,0 +1,4 @@
+interface:
+  display_name: "Honeybee MCP"
+  short_description: "Help with Honeybee MCP tasks"
+  default_prompt: "Use $honeybee-mcp to route a Honeybee-MCP task to the correct sub-skill and unified tool."

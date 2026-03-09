@@ -1,0 +1,4 @@
+interface:
+  display_name: "Honeybee Shade Remover"
+  short_description: "Help with Honeybee Shade Remover tasks"
+  default_prompt: "Use $honeybee-shade-remover to remove attached shades or shade meshes with the unified remove bus."

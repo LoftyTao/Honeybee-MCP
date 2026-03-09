@@ -1,0 +1,4 @@
+interface:
+  display_name: "Honeybee Model Saver"
+  short_description: "Help with Honeybee Model Saver tasks"
+  default_prompt: "Use $honeybee-model-saver to export the current Honeybee model to file or shared memory."

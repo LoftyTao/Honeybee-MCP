@@ -1,0 +1,4 @@
+interface:
+  display_name: "Honeybee Version Control"
+  short_description: "Help with Honeybee Version Control tasks"
+  default_prompt: "Use $honeybee-version-control to save checkpoints, undo, redo, compare, or restore model versions."

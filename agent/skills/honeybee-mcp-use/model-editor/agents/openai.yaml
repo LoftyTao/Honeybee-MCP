@@ -1,0 +1,4 @@
+interface:
+  display_name: "Honeybee Model Editor"
+  short_description: "Help with Honeybee Model Editor tasks"
+  default_prompt: "Use $honeybee-model-editor to perform model-wide or scoped cleanup operations."

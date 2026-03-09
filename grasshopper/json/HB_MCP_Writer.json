@@ -1,0 +1,43 @@
+{
+  "outputs": [
+    [
+      {
+        "name": "name", 
+        "type": null, 
+        "description": "The shared name written by this component.", 
+        "access": "None", 
+        "default": null
+      }, 
+      {
+        "name": "success", 
+        "type": null, 
+        "description": "True if the model was written successfully.", 
+        "access": "None", 
+        "default": null
+      }
+    ]
+  ], 
+  "description": "Write a Honeybee Model to the refactored Honeybee-MCP sync channel.\n-\nThis component writes a Honeybee Model to the memory-mapped cache used by the\nrefactored Honeybee-MCP sync bus. The written shared name should then be used\nby MCP through load_model() or load_model_from_shared_memory().\nThe shared name is derived from the model identifier, which is the stable and\nrecommended key on the MCP side.", 
+  "name": "HB MCP Writer", 
+  "nickname": "MCPWriter", 
+  "code": "\n# Keep this script compatible with {{Plugin}} {{PLGN}}Python / IronPython syntax.\nimport json\nimport struct\nimport mmap\nimport os\nimport tempfile\n\ntry:\n    from ladybug_{{cad}}.{{plugin}} import all_required_inputs, give_warning\nexcept ImportError as e:\n    raise ImportError('\\nFailed to import ladybug_{{cad}}:\\n\\t{}'.format(e))\n\n\nMAP_NAME_PREFIX = \"hb_model_\"\nHEADER_SIZE = 8\nMAX_SIZE = 100 * 1024 * 1024\nWRITER_SIGNAL_KEY = \"_writer_signal\"\n\n\ndef get_map_path(name):\n    \"\"\"Get the file path for memory-mapped file.\"\"\"\n    temp_dir = tempfile.gettempdir()\n    return os.path.join(temp_dir, MAP_NAME_PREFIX + name + \".mmap\")\n\n\ndef get_model_dict(model):\n    \"\"\"Extract dictionary from Honeybee Model object.\"\"\"\n    if model is None:\n        return None, \"No model provided\"\n    \n    if hasattr(model, 'to_dict'):\n        try:\n            model_dict = model.to_dict()\n            return model_dict, \"Model converted via to_dict()\"\n        except Exception as e:\n            return None, \"Failed to convert model: {}\".format(str(e))\n    \n    return None, \"Unknown model type: {}\".format(type(model))\n\n\ndef get_model_name(model, model_dict=None):\n    \"\"\"Get the stable shared name, preferring the serialized identifier.\"\"\"\n    if model_dict and model_dict.get('identifier'):\n        return model_dict['identifier']\n\n    if model is None:\n        return None\n    \n    if hasattr(model, 'identifier') and model.identifier:\n        return model.identifier\n\n    if hasattr(model, 'display_name') and model.display_name:\n        return model.display_name\n    \n    return \"unnamed_model\"\n\n\ndef write_to_mmap(model_dict, name):\n    \"\"\"Write model dictionary to memory-mapped file.\"\"\"\n    try:\n        from datetime import datetime\n        \n        payload = dict(model_dict)\n        payload[WRITER_SIGNAL_KEY] = {\n            \"written\": True,\n            \"timestamp\": datetime.now().isoformat()\n        }\n        \n        json_data = json.dumps(payload, ensure_ascii=False)\n        json_bytes = json_data.encode('utf-8')\n        data_size = len(json_bytes)\n        total_size = HEADER_SIZE + data_size\n        \n        if total_size > MAX_SIZE:\n            return False, \"Model too large: {} bytes (max: {})\".format(total_size, MAX_SIZE)\n        \n        map_path = get_map_path(name)\n        \n        with open(map_path, 'wb') as f:\n            f.write(b'\\x00' * total_size)\n        \n        with open(map_path, 'r+b') as f:\n            mm = mmap.mmap(f.fileno(), total_size)\n            \n            header = struct.pack('<Q', data_size)\n            mm[:HEADER_SIZE] = header\n            mm[HEADER_SIZE:total_size] = json_bytes\n            \n            mm.flush()\n            mm.close()\n        \n        return True, \"Model written to shared memory '{}'\".format(name)\n        \n    except Exception as e:\n        return False, \"Error: {}\".format(str(e))\n\n\n# Initialize outputs\nreport = []\nname = None\nsuccess = False\n\nif all_required_inputs(ghenv.Component) and _write:\n    model_dict, msg = get_model_dict(_model)\n    model_name = get_model_name(_model, model_dict)\n    name = model_name\n    \n    if model_dict is not None:\n        success, msg = write_to_mmap(model_dict, model_name)\n        report.append(msg)\n        if success:\n            report.append(\"Shared name: {}\".format(model_name))\n            if model_dict.get('display_name') and model_dict.get('display_name') != model_name:\n                report.append(\"Display name: {}\".format(model_dict.get('display_name')))\n            report.append(\"MCP can load it with load_model() or load_model_from_shared_memory(name='{}')\".format(model_name))\n            report.append(\"If MCP edits this shared-memory model, the refactored post-edit pipeline will auto-save back to the same name.\")\n        \n        if not success:\n            give_warning(ghenv.Component, msg)\n    else:\n        report.append(msg)\n        give_warning(ghenv.Component, msg)\nelse:\n    if not _write:\n        report.append(\"Set _write=True to write model to shared memory\")\n    if _model is None:\n        report.append(\"Connect a Honeybee Model to _model input\")\n", 
+  "version": "1.10.0", 
+  "subcategory": "4 :: Mcp", 
+  "category": "Honeybee", 
+  "inputs": [
+    {
+      "name": "_model", 
+      "type": "System.Object", 
+      "description": "A Honeybee Model object to be written to shared memory.", 
+      "access": "item", 
+      "default": null
+    }, 
+    {
+      "name": "_write", 
+      "type": "System.Object", 
+      "description": "Set to \"True\" to write the model to shared memory.", 
+      "access": "item", 
+      "default": null
+    }
+  ]
+}

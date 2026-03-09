@@ -1,0 +1,4 @@
+interface:
+  display_name: "Honeybee Search Lib"
+  short_description: "Help with Honeybee Search Lib tasks"
+  default_prompt: "Use $honeybee-search-lib to find valid Energy or Radiance identifiers before applying properties."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Honeybee Apply Properties"
+  short_description: "Help with Honeybee Apply Properties tasks"
+  default_prompt: "Use $honeybee-apply-properties to apply Energy or Radiance properties through the unified apply bus."

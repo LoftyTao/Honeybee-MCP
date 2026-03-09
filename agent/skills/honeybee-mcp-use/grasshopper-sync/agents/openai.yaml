@@ -1,0 +1,4 @@
+interface:
+  display_name: "Honeybee Grasshopper Sync"
+  short_description: "Help with Honeybee Grasshopper Sync tasks"
+  default_prompt: "Use $honeybee-grasshopper-sync to read, write, inspect, or clear Grasshopper shared memory."

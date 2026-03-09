@@ -1,0 +1,4 @@
+interface:
+  display_name: "Honeybee Query"
+  short_description: "Help with Honeybee Query tasks"
+  default_prompt: "Use $honeybee-query to inspect Honeybee, Energy, or Radiance data with the unified query bus."

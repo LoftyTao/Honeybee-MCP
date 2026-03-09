@@ -1,14 +1,20 @@
-import sys
-import os
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-
-if parent_dir not in sys.path:
-    sys.path.insert(0, parent_dir)
-
 from .mcp_context import mcp
-from tools.load_model import manager
+from .state.manager import manager
+from .state.energy_resources import dump_json
+
+
+def _resolve_output_path(name=None, folder=None):
+    import os
+
+    if manager.model is None:
+        raise ValueError("No model loaded. Load a model first.")
+
+    target_name = name or manager.model.identifier
+    if not target_name.lower().endswith(".hbjson"):
+        target_name = target_name + ".hbjson"
+    target_folder = folder or os.getcwd()
+    os.makedirs(target_folder, exist_ok=True)
+    return os.path.join(target_folder, target_name)
 
 @mcp.tool()
 def save_model(
@@ -23,13 +29,20 @@ def save_model(
     
     Exports the currently loaded Honeybee model with optional formatting and property filtering.
     """
-    # Use the Honeybee model's built-in to_hbjson method to export the model
-    file_path = manager.model.to_hbjson(
-        name=name,
-        folder=folder,
-        indent=indent,
-        included_prop=included_prop,
-        triangulate_sub_faces=triangulate_sub_faces
-    )
+    if manager.model is None:
+        return {"success": False, "error": "No model loaded. Load a model first."}
 
-    return {"file_path": file_path}
+    model_dict = manager.serialized_model_dict()
+    if included_prop is not None:
+        filtered = manager.model.to_dict(
+            included_prop=included_prop,
+            triangulate_sub_faces=triangulate_sub_faces,
+        )
+        filtered["properties"]["energy"] = model_dict.get("properties", {}).get("energy", {})
+        filtered["properties"]["radiance"] = model_dict.get("properties", {}).get("radiance", {})
+        model_dict = filtered
+
+    file_path = _resolve_output_path(name=name, folder=folder)
+    dump_json(file_path, model_dict, indent=indent)
+
+    return {"success": True, "file_path": file_path}

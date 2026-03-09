@@ -1,0 +1,4 @@
+interface:
+  display_name: "Honeybee Louver Adder"
+  short_description: "Help with Honeybee Louver Adder tasks"
+  default_prompt: "Use $honeybee-louver-adder to add louvers or blinds to selected apertures."

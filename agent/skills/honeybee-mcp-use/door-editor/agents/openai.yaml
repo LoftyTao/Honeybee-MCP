@@ -1,0 +1,4 @@
+interface:
+  display_name: "Honeybee Door Editor"
+  short_description: "Help with Honeybee Door Editor tasks"
+  default_prompt: "Use $honeybee-door-editor to inspect or remove doors with the unified query and remove buses."

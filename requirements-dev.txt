@@ -1,0 +1,19 @@
+# Development dependency set for tracking the latest compatible releases.
+# Typical usage:
+#   python -m pip install -U -r requirements-dev.txt
+
+honeybee-core
+honeybee-display
+honeybee-energy
+honeybee-radiance
+honeybee-energy-standards
+ladybug-core
+ladybug-display
+ladybug-geometry
+ladybug-geometry-polyskel
+ladybug-vtk
+honeybee-schema
+honeybee-standards
+fastmcp
+socksio
+vtk

@@ -1,6 +1,6 @@
 # Honeybee-MCP Agent Working Guide
 
-> This document provides comprehensive project understanding and working guidance for AI IDE Agents, designed to help future AI assistants quickly understand the project architecture, tool usage, and best practices.
+> This document helps AI IDE agents quickly understand the current Honeybee-MCP architecture, the unified tool surface, the working workflow, and the preferred extension strategy. It reflects the refactored implementation rather than the earlier object-specific tool layout.
 
 ---
 
@@ -8,8 +8,8 @@
 
 1. [Project Overview](#1-project-overview)
 2. [Core Architecture](#2-core-architecture)
-3. [Model Manager](#3-model-manager)
-4. [Tool Categories and Usage](#4-tool-categories-and-usage)
+3. [Model State System](#3-model-state-system)
+4. [Unified Tool System](#4-unified-tool-system)
 5. [Shared Memory System](#5-shared-memory-system)
 6. [Version Control System](#6-version-control-system)
 7. [Skills System](#7-skills-system)
@@ -18,6 +18,8 @@
 10. [Common Task Examples](#10-common-task-examples)
 11. [Error Handling](#11-error-handling)
 12. [Code Standards](#12-code-standards)
+13. [HBJSON Resource Extension Pattern](#13-hbjson-resource-extension-pattern)
+14. [Planning Lessons from Energy and Radiance Work](#14-planning-lessons-from-energy-and-radiance-work)
 
 ---
 
@@ -25,528 +27,433 @@
 
 ### 1.1 Project Positioning
 
-**Honeybee-MCP** is a Model Context Protocol (MCP) server designed to bridge Large Language Models (LLMs) with the Honeybee building energy modeling ecosystem.
+**Honeybee-MCP** is an MCP server for the Honeybee ecosystem. Its purpose is to let an AI IDE load, inspect, edit, synchronize, and version Honeybee models in a stable and persistent way.
 
-**Core Objectives:**
-- Provide a seamless integration layer for AI-augmented design environments to manipulate HBJSON and HBpkl files
-- Abstract the underlying complexities of honeybee-core libraries, offering high-level tools that allow AI to "understand" and "modify" 3D building models
-- Enable real-time bidirectional data exchange with Grasshopper
+The project currently supports:
 
-**Technology Stack:**
-- **Framework**: fastmcp (MCP protocol implementation)
-- **Core Libraries**: honeybee-core, honeybee-energy, honeybee-radiance
-- **Python Version**: 3.8+
-- **Dependencies**: Ladybug Tools 1.10
+- `honeybee-core`
+- `honeybee-energy`
+- `honeybee-radiance`
+- Grasshopper collaboration through shared memory
 
-### 1.2 Deployment Mode
+### 1.2 Current Refactor Status
 
-> **Important**: This MCP server only supports **local deployment**; remote server deployment is not supported.
+The project has completed a clear restructuring of its tool system. The current implementation no longer treats a large set of object-specific tool files as the main architecture. Instead, it is organized around four unified operation buses:
+
+- `query`
+- `apply`
+- `add`
+- `remove`
+
+State management, shared-memory synchronization, version control, and the bus execution core have been separated from the older wrapper-style tools and moved into clearer subsystems.
 
 ### 1.3 Project Structure
 
-```
+```text
 Honeybee-MCP/
-├── server.py              # Main entry point, initializes FastMCP server
-├── requirements.txt       # Python dependencies
-├── README.md              # Project documentation
-├── AGENTS.md              # This file - Agent working guide
-│
-├── tools/                 # Core tools module
-│   ├── mcp_context.py     # MCP context management (FastMCP instance)
-│   ├── load_model.py      # Model loading tools + Model_Manager singleton
-│   ├── save_model.py      # Model saving tools
-│   ├── query_*.py         # Various query tools
-│   ├── *_editor.py        # Various editing tools
-│   ├── apply_*.py         # Property application tools
-│   ├── shared_memory.py   # Shared memory manager
-│   ├── version_control.py # Version control system
-│   └── hvac_config.json   # HVAC system configuration presets
-│
-├── grasshopper/           # Grasshopper integration components
-│   ├── src/               # Python source code
-│   └── user_object/       # Compiled .ghuser components
-│
-└── agent/skills/          # AI Agent skill definitions
-    └── Honeybee-MCP/
-        ├── SKILL.md       # Main skill entry point
-        ├── model-loader/  # Model loading skill
-        ├── model-saver/   # Model saving skill
-        ├── query/         # Query skill
-        ├── aperture-adder/    # Add windows skill
-        ├── aperture-remover/  # Remove windows skill
-        ├── louver-adder/      # Add louvers skill
-        ├── shade-remover/     # Remove shades skill
-        ├── door-editor/       # Door editing skill
-        ├── model-editor/      # General editing skill
-        ├── apply-properties/  # Property application skill
-        ├── search-lib/        # Library search skill
-        ├── grasshopper-sync/  # Grasshopper sync skill
-        └── version-control/   # Version control skill
+|-- server.py
+|-- requirements.txt
+|-- README.md
+|-- AGENTS.md
+|-- tools/
+|   |-- __init__.py
+|   |-- mcp_context.py
+|   |-- load_model.py
+|   |-- save_model.py
+|   |-- state/
+|   |   |-- manager.py
+|   |   |-- hooks.py
+|   |   |-- summary.py
+|   |   |-- energy_resources.py
+|   |   `-- radiance_resources.py
+|   |-- operations/
+|   |   |-- common.py
+|   |   |-- query_bus.py
+|   |   |-- apply_bus.py
+|   |   |-- add_bus.py
+|   |   |-- remove_bus.py
+|   |   |-- apply_service.py
+|   |   |-- add_service.py
+|   |   |-- remove_service.py
+|   |   |-- energy_resource_service.py
+|   |   |-- radiance_resource_service.py
+|   |   `-- hvac_config.json
+|   |-- sync/
+|   |   |-- bus.py
+|   |   |-- service.py
+|   |   `-- shared_memory.py
+|   |-- library/
+|   |   |-- bus.py
+|   |   `-- service.py
+|   |-- visualization/
+|   |   |-- bus.py
+|   |   `-- service.py
+|   `-- versioning/
+|       |-- bus.py
+|       |-- service.py
+|       `-- store.py
+|-- grasshopper/
+|-- agent/skills/
+`-- src/
 ```
+
+### 1.4 Current Tool Policy
+
+The repository now treats the unified buses as the only primary public interface.
+
+**Rule**: Extend `query`, `apply`, `add`, `remove`, `sync`, `library`, `visualization`, or `versioning` directly. Do not reintroduce object-specific wrapper files.
 
 ---
 
 ## 2. Core Architecture
 
-### 2.1 Architecture Diagram
+### 2.1 Architecture Layers
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        AI IDE (Client)                          │
-│                    (Cursor / Trae / VS Code)                    │
-└─────────────────────────────┬───────────────────────────────────┘
-                              │ MCP Protocol
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     Honeybee-MCP Server                         │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │ Model Manager│  │   Version    │  │   Shared     │          │
-│  │  (Singleton) │  │   Control    │  │   Memory     │          │
-│  └──────┬───────┘  └──────────────┘  └──────┬───────┘          │
-│         │                                     │                  │
-│  ┌──────▼─────────────────────────────────────▼───────┐         │
-│  │                    Tools Layer                     │         │
-│  │  Query │ Edit │ Apply │ I/O │ Search │ Version    │         │
-│  └────────────────────────────────────────────────────┘         │
-└─────────────────────────────┬───────────────────────────────────┘
-                              │
-        ┌─────────────────────┼─────────────────────┐
-        ▼                     ▼                     ▼
-┌───────────────┐    ┌───────────────┐    ┌───────────────┐
-│  HBJSON/HBpkl │    │   Grasshopper │    │   honeybee-   │
-│    Files      │    │ Shared Memory │    │     core      │
-└───────────────┘    └───────────────┘    └───────────────┘
-```
+The current architecture can be understood as four layers:
 
-### 2.2 Data Flow
+1. **State Layer**
+   - current model state
+   - model source tracking
+   - post-edit hooks
 
-```
-Load Model:
-  Grasshopper/File → Shared Memory/File → Model_Manager.model
+2. **Sync Layer**
+   - shared-memory protocol
+   - cache cleanup
+   - Grasshopper read/write collaboration
 
-Modify Model:
-  Tool Call → Model_Manager.model.modify() → Version Control Record
+3. **Operation Layer**
+   - the four unified buses: `query / apply / add / remove`
+   - their service modules
+   - target resolution, argument boundaries, and result formatting
 
-Save Model:
-  Model_Manager.model → Shared Memory/File → Grasshopper Read
-```
+4. **Library and Versioning Support**
+   - Energy and Radiance library search
+   - version snapshot storage and action dispatch
+
+### 2.2 Design Principle
+
+The current system follows a small set of architectural principles:
+
+- concentrate the user-facing interface
+- concentrate the internal implementation
+- make input boundaries explicit
+- make output boundaries explicit
+- keep cross-cutting logic in one place
+
+In other words, when adding a new capability, the preferred questions are:
+
+- Is this a new `query` field registration?
+- Is this a new `apply` operation?
+- Is this a new `add` operation?
+- Is this a new `remove` operation?
+
+The preferred answer is not to create another scattered top-level tool file.
 
 ---
 
-## 3. Model Manager
+## 3. Model State System
 
-### 3.1 Model_Manager Singleton
+### 3.1 Model Manager
 
-The model manager is the core of the entire system, using the singleton pattern to manage the currently loaded Honeybee model.
-
-**Location**: `tools/load_model.py`
+Current model state is managed centrally by `tools/state/manager.py`.
 
 ```python
-class Model_Manager:
+class ModelManager:
     def __init__(self):
-        self.model = None  # Currently loaded honeybee Model object
-        self.source = None  # Model source: "file", "dict", or "shared_memory"
-        self.source_name = None  # Source name: file path or shared memory name
-    
-    def load(self, hb_file: str, cleanup_irrational: bool = False):
-        """Load model from file"""
-        
-    def load_from_dict(self, data: dict, cleanup_irrational: bool = False):
-        """Load model from dictionary"""
-
-# Global singleton
-manager = Model_Manager()
+        self.model = None
+        self.source = None
+        self.source_name = None
 ```
 
-### 3.2 Model Loading Priority
-
-When calling `load_model()`, the system loads models in the following priority:
-
-1. **Grasshopper Shared Memory** (highest priority)
-   - Automatically detects models in shared memory
-   - If present, loads from shared memory first
-   - Sets `manager.source = "shared_memory"`
-
-2. **Specified File Path**
-   - If `hb_file` parameter is provided
-   - Loads from HBJSON or HBpkl file
-   - Sets `manager.source = "file"`
-
-3. **Error Handling**
-   - Returns error message and hints when no model is available
-
-### 3.3 Auto-Save Feature
-
-**Important**: When a model is loaded from Grasshopper shared memory, all editing operations automatically save the model back to shared memory.
-
-**How it works:**
-- System tracks model source via `manager.source`
-- If `manager.source == "shared_memory"`, editing tools automatically call `auto_save_to_shared_memory()`
-- Auto-save writes to the same shared memory name used for loading
-- Auto-save also creates version snapshots for undo capability
-
-**Auto-save behavior:**
-| Model Source | Auto-Save | Manual Save Required |
-|-------------|-------------|-------------------|
-| shared_memory | ✅ Automatic | Optional (for different names) |
-| file | ❌ No | ✅ Required |
-| dict | ❌ No | ✅ Required |
-
-**When to use manual save:**
-- Save model from file to shared memory
-- Save to a different shared memory name
-- Create backups with different names
-- Manually control save timing
-
-### 3.4 Model State Check
-
-All tools should check the model state before execution:
+Global singleton:
 
 ```python
-if manager.model is None:
-    return {
-        "success": False,
-        "message": "No model loaded. Please use load_model to load a model first."
-    }
+manager = ModelManager()
 ```
+
+### 3.2 Model Source
+
+`manager.source` currently records one of the following origins:
+
+- `file`
+- `dict`
+- `shared_memory`
+
+### 3.3 Post-Edit Pipeline
+
+All edit operations should enter the unified post-edit pipeline after a successful change. This pipeline is handled by `tools/state/hooks.py`.
+
+Its responsibilities include:
+
+- automatically writing back to shared memory when appropriate
+- attaching consistent `auto_save` information to tool responses
+
+This means new business logic should not implement a separate private auto-save routine.
 
 ---
 
-## 4. Tool Categories and Usage
+## 4. Unified Tool System
 
-### 4.1 Model I/O Tools
+### 4.1 Public Tool Surface
 
-| Tool Name | Description | Use Case |
-|---------|---------|---------|
-| `load_model` | Load model from file or shared memory | Before any operation |
-| `load_model_from_dict` | Load model from dictionary | Version recovery, API responses |
-| `save_model` | Save model to HBJSON file | Export model |
-| `load_model_from_shared_memory` | Load from shared memory | Grasshopper workflow |
-| `save_model_to_shared_memory` | Save to shared memory | Grasshopper workflow |
+The recommended public MCP interface is:
 
-### 4.2 Query Tools
+- `load_model`
+- `load_model_from_dict`
+- `save_model`
+- `load_model_from_shared_memory`
+- `save_model_to_shared_memory`
+- `check_shared_memory_status`
+- `clear_shared_memory_model`
+- `cleanup_shared_memory_cache`
+- `version_control`
+- `search_properties`
+- `visualization`
+- `query`
+- `apply`
+- `add`
+- `remove`
 
-| Tool Name | Query Object | Common Parameters |
-|---------|---------|---------|
-| `query_model` | Overall model information | `rooms`, `floor_area`, `volume` |
-| `query_room` | Room properties | `general_properties`, `hvac_properties` |
-| `query_faces` | Face properties | `area`, `normal`, `aperture_ratio` |
-| `query_apertures` | Aperture properties | `area`, `is_operable`, `parent` |
-| `query_doors` | Door properties | `area`, `is_glass` |
-| `query_shades` | Shade properties | `area`, `is_indoor`, `parent` |
+### 4.2 Query Bus
 
-**Query Modes:**
+`query` is the unified read interface.
 
-```python
-# Get identifier list
-query_model(rooms=True)  # Returns ["Room_1", "Room_2", ...]
+#### Args
 
-# Get count
-query_model(rooms=True, return_count=True)  # Returns {"rooms": 5}
+- `target_type`
+- `identifiers`
+- `fields`
+- `output_mode`
 
-# Get multiple properties
-query_model(floor_area=True, volume=True, rooms=True)
-```
+#### Supported Target Types
 
-### 4.3 Editing Tools
+- `model`
+- `room`
+- `face`
+- `aperture`
+- `door`
+- `subface`
+- `shade`
+- `schedule`
+- `schedule_day`
+- `schedule_type_limit`
+- `energy_resource`
+- `modifier`
+- `modifier_set`
+- `radiance_resource`
+- `sensor_grid`
+- `view`
 
-| Tool Name | Description |
-|---------|---------|
-| `remove_all_apertures` | Remove all apertures |
-| `remove_all_doors` | Remove all doors |
-| `remove_all_shades` | Remove all shades (including ShadeMesh) |
-| `remove_face_objects` | Remove objects from specified faces |
-| `remove_room_shades` | Remove shades from rooms |
-
-### 4.4 Aperture/Shade Addition Tools
-
-| Tool Name | Description | Parameter Example |
-|---------|---------|---------|
-| `add_aperture_by_width_height` | Add aperture by dimensions | `width=2, height=1.5` |
-| `add_apertures_by_ratio` | Add apertures by area ratio | `ratio=0.4` (40% WWR) |
-| `add_apertures_by_ratio_rectangle` | Add rectangular apertures by ratio | `ratio=0.3, aperture_height=1.5` |
-| `add_apertures_by_ratio_gridded` | Add gridded apertures by ratio | `ratio=0.4, x_dim=1.5` |
-| `add_louvers` | Add louver shades | `depth=0.5, louver_count=5` |
-| `add_louvers_by_count` | Add louvers by count | `louver_count=4, depth=0.6` |
-| `add_louvers_by_distance_between` | Add louvers by spacing | `distance=0.3, depth=0.5` |
-
-### 4.5 Property Application Tools
-
-| Tool Name | Application Target | Property Type |
-|---------|---------|---------|
-| `apply_room_attributes` | Room | Construction set, program type, conditioning status |
-| `apply_hvac` | Room | HVAC system |
-| `apply_opaque_attributes` | Face/Door | Opaque construction, Radiance modifier |
-| `apply_window_attributes` | Aperture/Glass Door | Window construction, Radiance modifier |
-| `apply_shade_attributes` | Shade | Shade construction, Radiance modifier |
-
-### 4.6 Search Tools
+#### Example
 
 ```python
-# Search construction sets
-search_properties(category="construction_sets", keywords=["office"])
-
-# Search program types
-search_properties(category="program_types", building_program="Office")
-
-# Search constructions
-search_properties(category="constructions", construction_type="wall")
-
-# Search modifiers
-search_properties(category="modifiers", keywords=["glass"])
+query(
+    target_type="face",
+    identifiers=["Face_1"],
+    fields=[
+        "identifier",
+        "area",
+        "aperture_ratio",
+        "properties.energy.construction.display_name"
+    ]
+)
 ```
+
+### 4.3 Apply Bus
+
+`apply` is the unified property-assignment interface.
+
+#### Args
+
+- `operation`
+- `target_type`
+- `identifiers`
+- `values`
+
+#### Current Operations
+
+- `room_attributes`
+- `hvac`
+- `opaque_attributes`
+- `window_attributes`
+- `shade_attributes`
+- `people`
+- `lighting`
+- `electric_equipment`
+- `service_hot_water`
+- `setpoint`
+- `ventilation`
+- `process_load`
+- `schedule_type_limit`
+- `schedule_day`
+- `schedule_ruleset`
+- `schedule_fixed_interval`
+- `modifier`
+- `modifier_set`
+- `sensor_grid`
+- `view`
+
+#### Example
+
+```python
+apply(
+    operation="room_attributes",
+    target_type="room",
+    values={"program_type_identifier": "Office_Open"}
+)
+```
+
+### 4.4 Add Bus
+
+`add` is the unified creation interface.
+
+#### Current Operations
+
+- `aperture_by_width_height`
+- `apertures_by_ratio`
+- `apertures_by_ratio_rectangle`
+- `apertures_by_ratio_gridded`
+- `apertures_by_width_height_rectangle`
+- `louvers`
+- `louvers_by_count`
+- `louvers_by_distance_between`
+- `schedule_type_limit`
+- `schedule_day`
+- `schedule_ruleset`
+- `schedule_fixed_interval`
+- `process_load`
+- `modifier`
+- `modifier_set`
+- `sensor_grid`
+- `view`
+
+#### Example
+
+```python
+add(
+    operation="apertures_by_ratio",
+    target_type="face",
+    identifiers=["Face_1"],
+    params={"ratio": 0.4}
+)
+```
+
+### 4.5 Remove Bus
+
+`remove` is the unified deletion interface.
+
+#### Current Operations
+
+- `all_apertures`
+- `all_doors`
+- `all_shades`
+- `face_objects`
+- `room_shades`
+- `process_loads`
+- `schedule`
+- `schedule_day`
+- `schedule_type_limit`
+- `modifier`
+- `modifier_set`
+- `sensor_grid`
+- `view`
+
+#### Example
+
+```python
+remove(
+    operation="face_objects",
+    identifiers=["Face_1"],
+    options={"apertures": True, "doors": True}
+)
+```
+
+### 4.6 Public Interface Policy
+
+The unified buses are the only recommended public editing interface. If a compatibility wrapper is needed for an external ecosystem in the future, it should be treated as a separate compatibility strategy rather than the main architecture.
 
 ---
 
 ## 5. Shared Memory System
 
-### 5.1 Architecture Design
+### 5.1 Purpose
 
-The shared memory system is based on memory-mapped files for inter-process communication.
+The shared-memory system enables two-way model exchange between Grasshopper and an AI IDE.
 
-**Protocol Format:**
-```
-┌───────────────┬─────────────────────────────────┐
-│  Header (8B)  │        JSON Data                │
-│  Data Size    │   (UTF-8 Encoded Model Dict)    │
-└───────────────┴─────────────────────────────────┘
-```
+### 5.2 Main Location
 
-**Key Parameters:**
-- Header size: 8 bytes (unsigned long long, little-endian)
-- Maximum model size: 100 MB
-- File location: System temp directory
-- File naming: `hb_model_{name}.mmap`
+The current shared-memory implementation is concentrated in:
 
-### 5.2 SharedMemoryManager Class
+- `tools/sync/service.py`
+- `tools/sync/bus.py`
+- `tools/sync/shared_memory.py`
 
-**Location**: `tools/shared_memory.py`
+### 5.3 Behavior
 
-```python
-class SharedMemoryManager:
-    def write_model(self, model_dict: dict, create: bool = True) -> bool:
-        """Write model to shared memory"""
-        
-    def read_model(self) -> Optional[dict]:
-        """Read model from shared memory"""
-        
-    def clear(self):
-        """Clear shared memory"""
-        
-    def close(self):
-        """Close and cleanup shared memory"""
-```
+The expected collaboration sequence is:
 
-### 5.3 Grasshopper Workflow
+- Grasshopper Writer writes a model
+- MCP loads the model
+- MCP edits the model
+- the post-edit pipeline writes updates back when appropriate
+- Grasshopper Reader reads the updated model
 
-```
-┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
-│  Honeybee Model │      │  HB-MCP Writer  │      │  Shared Memory  │
-│   (Grasshopper) │ ───► │                 │ ───► │   (.mmap file)  │
-└─────────────────┘      └─────────────────┘      └────────┬────────┘
-                                                           │
-                                                           ▼
-┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
-│  Honeybee Model │      │  HB-MCP Reader  │      │    AI IDE +     │
-│   (Modified)    │ ◄─── │                 │ ◄─── │  Honeybee-MCP   │
-└─────────────────┘      └─────────────────┘      └─────────────────┘
-```
+### 5.4 Cache Cleanup
 
-**Operation Steps:**
+The system automatically:
 
-1. **Grasshopper → AI IDE**
-   ```python
-   # Grasshopper side: Use HB-MCP Writer component to write model
-   # AI IDE side:
-   load_model_from_shared_memory()  # Or load_model() for auto-detection
-   ```
-
-2. **AI IDE → Grasshopper**
-   ```python
-   # AI IDE side:
-   save_model_to_shared_memory()
-   # Grasshopper side: Use HB-MCP Reader component to read model
-   ```
-
-### 5.4 Cache Management
-
-The system automatically manages shared memory cache:
-
-- Automatically cleans old cache when loading models (keeps most recent 5 files)
-- Removes cache files older than 24 hours
-- Manual cleanup: `cleanup_cache` tool
+- keeps recent cache files
+- removes old cache files
+- provides an explicit cleanup tool when manual cleanup is required
 
 ---
 
 ## 6. Version Control System
 
-### 6.1 Automatic Version Tracking
+### 6.1 Public Interface
 
-The version control system automatically records versions at:
+The unified versioning entry point is `version_control(action=...)`.
 
-- Model loading
-- Model saving (including auto-save from shared memory)
-- Manual `save_version` call
+### 6.2 Supported Actions
 
-**Version Limit:** Maximum 10 versions per model (implemented using deque)
+- `list`
+- `save`
+- `load`
+- `undo`
+- `redo`
+- `compare`
+- `info`
+- `delete`
+- `clear`
+- `cleanup`
 
-**Auto-Save Integration:**
-When editing a model loaded from shared memory, each auto-save operation creates a version snapshot with description "Auto-saved after edit". This enables undo capability even when using auto-save feature.
+### 6.3 Snapshot Policy
 
-### 6.2 Version Control Tool
+Version snapshots keep the full serialized model dictionary, including:
 
-A unified `version_control` tool handles all version operations through the `action` parameter:
+- Honeybee Core data
+- Energy extension data
+- Radiance extension data
 
-| Action | Description | Required Parameters |
-|--------|-------------|---------------------|
-| `list` | List all versions for a model | model_name (optional) |
-| `save` | Save current model as a version snapshot | description (optional) |
-| `load` | Load a specific version | model_name, version_id |
-| `undo` | Undo to previous version | model_name (optional) |
-| `redo` | Redo last undone change | model_name (optional) |
-| `compare` | Compare two versions | model_name, version_id, version_id_2 |
-| `info` | Get detailed info about a version | model_name, version_id |
-| `delete` | Delete a specific version | model_name, version_id |
-| `clear` | Clear version history | model_name (optional) |
-| `cleanup` | Clean up old cache files | none |
-
-### 6.3 Version Data Structure
-
-```python
-version_data = {
-    "version_id": "001",           # Version number (3-digit padded)
-    "timestamp": "2024-01-15 14:30:00",
-    "description": "Added windows", # Optional description
-    "model_dict": {...},           # Complete model dictionary
-    "rooms_count": 5,
-    "outdoor_shades_count": 2,
-    "apertures_count": 10,         # Number of windows
-    "doors_count": 2,              # Number of doors
-    "shade_meshes_count": 1        # Number of shade meshes
-}
-```
-
-### 6.4 Usage Examples
-
-```python
-# View version history
-version_control("list", model_name="MyModel")
-# Returns: {"versions": [{"version": "003", ...}, {"version": "002", ...}, ...]}
-
-# Save version with description
-version_control("save", description="Before removing windows")
-
-# Undo last change
-version_control("undo")
-# Returns: {"success": True, "version_id": "002", ...}
-
-# Redo last undone change
-version_control("redo")
-
-# Load specific version
-version_control("load", model_name="MyModel", version_id="001")
-
-# Compare two versions
-version_control("compare", model_name="MyModel", version_id="001", version_id_2="003")
-```
+This is why version restore can recover both geometry and reusable resources rather than only host objects.
 
 ---
 
 ## 7. Skills System
 
-### 7.1 Skills Overview
+The skills root is located at:
 
-The skills system provides structured workflow guidance for AI Agents. Each skill corresponds to a type of operation scenario.
-
-**Skills Directory**: `agent/skills/Honeybee-MCP/`
-
-**Main Entry Point**: `agent/skills/Honeybee-MCP/SKILL.md`
-
-### 7.2 Skill Hierarchy
-
-```
-agent/skills/Honeybee-MCP/
-├── SKILL.md                    # Main skill (honeybee-mcp)
-│                               # - Comprehensive toolkit overview
-│                               # - Skill selection guide
-│                               # - Quick examples for all operations
-│
-├── model-loader/SKILL.md       # Load models from files/GH
-├── model-saver/SKILL.md        # Save models to files
-├── query/SKILL.md              # Query model properties
-├── aperture-adder/SKILL.md     # Add windows/skylights
-├── aperture-remover/SKILL.md   # Remove windows
-├── louver-adder/SKILL.md       # Add louvers/overhangs
-├── shade-remover/SKILL.md      # Remove shades
-├── door-editor/SKILL.md        # Edit doors
-├── model-editor/SKILL.md       # General editing
-├── apply-properties/SKILL.md   # Apply constructions/HVAC
-├── search-lib/SKILL.md         # Search library
-├── grasshopper-sync/SKILL.md   # GH synchronization
-└── version-control/SKILL.md    # Undo/redo versions
+```text
+agent/skills/
 ```
 
-### 7.3 Available Skills
+The role of the skills system has shifted from "remembering a long list of old tool filenames" to "understanding when to use the unified buses and the state, sync, and version layers."
 
-| Skill Name | Trigger Scenario | Main Tools |
-|---------|---------|---------|
-| `honeybee-model-loader` | Load model | `load_model` |
-| `honeybee-model-saver` | Save model | `save_model` |
-| `honeybee-query` | Query model info | `query_model`, `query_room`, etc. |
-| `honeybee-model-editor` | Edit model | `remove_all_*` |
-| `honeybee-aperture-adder` | Add apertures | `add_apertures_by_*` |
-| `honeybee-aperture-remover` | Remove apertures | `remove_all_apertures` |
-| `honeybee-louver-adder` | Add louvers | `add_louvers*` |
-| `honeybee-shade-remover` | Remove shades | `remove_all_shades` |
-| `honeybee-door-editor` | Edit doors | Door-related tools |
-| `honeybee-apply-properties` | Apply properties | `apply_*` |
-| `honeybee-search-lib` | Search library | `search_properties` |
-| `honeybee-grasshopper-sync` | Grasshopper sync | Shared memory tools |
-| `honeybee-version-control` | Version control | `version_control` |
+For future skill authoring and maintenance, the recommendation is:
 
-### 7.4 Skill Selection Guide
-
-When a user request is received, use this decision process:
-
-| User Intent | Skill to Invoke |
-|-------------|-----------------|
-| Load/import model | `honeybee-model-loader` |
-| Save/export model | `honeybee-model-saver` |
-| View model info | `honeybee-query` |
-| Add windows | `honeybee-aperture-adder` |
-| Remove windows | `honeybee-aperture-remover` |
-| Add louvers/shades | `honeybee-louver-adder` |
-| Remove shades | `honeybee-shade-remover` |
-| Edit doors | `honeybee-door-editor` |
-| Apply properties | `honeybee-apply-properties` |
-| Search library | `honeybee-search-lib` |
-| Sync with Grasshopper | `honeybee-grasshopper-sync` |
-| Undo/redo changes | `honeybee-version-control` |
-
-### 7.5 Skill File Format
-
-Each skill contains a `SKILL.md` file with the following format:
-
-```markdown
----
-name: "skill-name"
-description: "Skill description for AI to understand when to invoke"
----
-
-# Skill Title
-
-## Tools
-### tool_name
-**Args:** ...
-**Returns:** ...
-
-## Workflow
-1. Step 1
-2. Step 2
-
-## Notes
-- Important notes
-```
+- center workflows around `query / apply / add / remove`
+- mention legacy interfaces only when necessary
+- describe work as a workflow instead of a flat list of tool names
 
 ---
 
@@ -554,180 +461,76 @@ description: "Skill description for AI to understand when to invoke"
 
 ### 8.1 Standard Workflow
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Standard Workflow                        │
-├─────────────────────────────────────────────────────────────┤
-│  1. LOAD MODEL                                              │
-│     └─► load_model() / load_model_from_shared_memory()      │
-│                                                              │
-│  2. QUERY MODEL (Optional)                                  │
-│     └─► query_model() / query_room() / query_faces()        │
-│                                                              │
-│  3. SEARCH PROPERTIES (Optional)                            │
-│     └─► search_properties()                                 │
-│                                                              │
-│  4. EDIT MODEL                                              │
-│     └─► add_* / remove_* / apply_*                          │
-│     Note: If loaded from shared memory, auto-save triggers! │
-│                                                              │
-│  5. VERIFY CHANGES                                          │
-│     └─► query_model() to confirm                            │
-│                                                              │
-│  6. SAVE MODEL (Optional for shared memory models)          │
-│     └─► save_model() / save_model_to_shared_memory()        │
-│     Note: Auto-save already handled for shared memory models│
-└─────────────────────────────────────────────────────────────┘
+```text
+1. LOAD MODEL
+   -> load_model() / load_model_from_shared_memory()
+
+2. QUERY MODEL
+   -> query(...)
+
+3. SEARCH PROPERTIES (Optional)
+   -> search_properties(...)
+
+4. VISUALIZE (Optional)
+   -> visualization(...)
+
+5. EDIT MODEL
+   -> add(...) / apply(...) / remove(...)
+
+6. VERIFY CHANGES
+   -> query(...)
+
+7. SAVE OR SYNC
+   -> save_model() / save_model_to_shared_memory()
 ```
 
-**Auto-Save Feature:**
-- Models loaded from Grasshopper shared memory are automatically saved after each edit
-- No manual save required for normal workflow
-- Manual save is still available for backups or different names
+### 8.2 Shared Memory Workflow
 
-### 8.2 Grasshopper Collaboration Workflow
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  Grasshopper Workflow                        │
-├─────────────────────────────────────────────────────────────┤
-│  Grasshopper Side:                                          │
-│  1. Create Honeybee Model                                   │
-│  2. Connect to HB-MCP Writer                                │
-│  3. Set _write=True to export to shared memory              │
-│                                                              │
-│  AI IDE Side:                                               │
-│  4. load_model() - auto-detects from shared memory          │
-│  5. Modify model using MCP tools                            │
-│     Note: Edits are automatically saved back to shared memory!│
-│  6. (Optional) save_model_to_shared_memory() - for backup   │
-│                                                              │
-│  Grasshopper Side:                                          │
-│  7. HB-MCP Reader reads modified model                      │
-│  8. Continue design workflow                                │
-└─────────────────────────────────────────────────────────────┘
+```text
+Grasshopper Writer -> shared memory -> load_model()
+AI operations      -> auto-save      -> Grasshopper Reader
 ```
 
-**Key Feature - Auto-Save:**
-When model is loaded from Grasshopper shared memory, all editing operations automatically save changes back to shared memory. No manual save required for normal workflow!
+### 8.3 Legacy Workflow
 
-**When to use manual save:**
-- Save model from file to shared memory
-- Save to a different shared memory name
-- Create backups with different names
-- Manually control save timing
-
-### 8.3 Error Recovery Workflow
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  Error Recovery Workflow                     │
-├─────────────────────────────────────────────────────────────┤
-│  1. version_control("undo") - Restore previous version      │
-│                                                              │
-│  2. If undo unavailable:                                    │
-│     └─► version_control("list")                             │
-│     └─► version_control("load", version_id="001")           │
-│                                                              │
-│  3. Re-apply changes carefully                              │
-└─────────────────────────────────────────────────────────────┘
-```
+Legacy workflows can still run, but they are no longer the preferred way to describe the system. Future documentation, skills, and automation scripts should prioritize the unified-bus workflow.
 
 ---
 
 ## 9. Best Practices
 
-### 9.1 Model Loading Best Practices
+### 9.1 Query First
+
+Inspect the current state before editing.
 
 ```python
-# Recommended: Let the system auto-detect
-load_model()
-
-# If specific file is needed
-load_model(hb_file="/path/to/model.hbjson")
-
-# If geometry cleanup is needed
-load_model(cleanup_irrational=True)
-
-# Load latest Grasshopper model
-load_model("latest")
+query(target_type="model", fields=["faces", "rooms"])
+query(target_type="face", identifiers=faces, fields=["identifier", "type", "boundary_condition"])
 ```
 
-### 9.2 Query Best Practices
+### 9.2 Prefer Unified Buses
 
-```python
-# Get overview first
-query_model(rooms=True, floor_area=True, identifier=True, display_name=True)
+New features, new skills, and new scripts should prefer:
 
-# Then query detailed information
-query_faces(face_identifiers, area=True, aperture_ratio=True)
+- `query`
+- `apply`
+- `add`
+- `remove`
 
-# Use return_count to reduce data volume
-query_model(apertures=True, return_count=True)
-```
+### 9.3 Extend via Registry Thinking
 
-### 9.3 Editing Best Practices
+When you need a new capability, think in this order:
 
-```python
-# Query and confirm before editing
-faces = query_model(faces=True)["faces"]
-query_faces(faces, area=True, type=True)
+- Is it a new query field?
+- Is it a new apply operation?
+- Is it a new add operation?
+- Is it a new remove operation?
 
-# Execute edit
-add_apertures_by_ratio(face_identifiers=faces, ratio=0.4)
+Do not default to adding another flat wrapper tool file.
 
-# Verify after editing
-query_faces(faces, aperture_ratio=True)
-```
+### 9.4 Shared Memory Safety
 
-### 9.4 Property Application Best Practices
-
-```python
-# 1. Search available properties first
-search_properties(category="construction_sets", keywords=["office"])
-
-# 2. Apply to model
-apply_room_attributes(construction_set_identifier="Office_Construction_Set")
-
-# 3. Verify application result
-query_room(general_properties=True)
-```
-
-### 9.5 HVAC Application Best Practices
-
-```python
-# 1. View available options
-apply_hvac(system_category="AllAir", list_options=True)
-
-# 2. Apply system
-apply_hvac(
-    system_category="AllAir",
-    system_type="VAV",
-    vintage="ASHRAE_2019",
-    sensible_heat_recovery=0.7
-)
-
-# 3. Verify
-query_room(hvac_properties=True)
-```
-
-### 9.6 Orientation-Based Property Application
-
-When multiple constructions/modifiers are provided, the system assigns by orientation:
-
-```python
-# 1 item: Apply to all
-apply_window_attributes(construction_identifiers=["DoubleGlazed"])
-
-# 2 items: North, South
-apply_window_attributes(construction_identifiers=["NorthGlazing", "SouthGlazing"])
-
-# 4 items: North, East, South, West
-apply_window_attributes(construction_identifiers=["N", "E", "S", "W"])
-
-# 8 items: N, NE, E, SE, S, SW, W, NW
-apply_window_attributes(construction_identifiers=["N", "NE", "E", "SE", "S", "SW", "W", "NW"])
-```
+When a model comes from shared memory, successful edits may be written back automatically. If overwriting the shared state would be risky, save elsewhere first or use a distinct name.
 
 ---
 
@@ -736,298 +539,283 @@ apply_window_attributes(construction_identifiers=["N", "NE", "E", "SE", "S", "SW
 ### 10.1 Add Windows to Exterior Walls
 
 ```python
-# Step 1: Load model
-load_model()
+faces = query(target_type="model", fields=["faces"])["data"]["faces"]
 
-# Step 2: Query exterior walls
-model_info = query_model(rooms=True)
-faces_info = query_faces(
-    query_model(faces=True)["faces"],
-    type=True,
-    boundary_condition=True
-)
-exterior_walls = [f for f, info in faces_info.items() 
-                  if info["type"] == "Wall" and info["boundary_condition"] == "Outdoors"]
+face_info = query(
+    target_type="face",
+    identifiers=faces,
+    fields=["identifier", "type", "boundary_condition"]
+)["data"]
 
-# Step 3: Add windows (40% WWR)
-add_apertures_by_ratio(face_identifiers=exterior_walls, ratio=0.4)
+exterior_walls = [
+    fid for fid, info in face_info.items()
+    if info["type"] == "Wall" and info["boundary_condition"] == "Outdoors"
+]
 
-# Step 4: Verify
-query_faces(exterior_walls, aperture_ratio=True)
-
-# Step 5: Save (auto-saved if from Grasshopper)
-save_model_to_shared_memory()
-```
-
-### 10.2 Add Louver Shades
-
-```python
-# Step 1: Query apertures
-apertures = query_model(apertures=True)["apertures"]
-
-# Step 2: Add louvers (5 pieces, 0.5m depth)
-add_louvers_by_count(
-    aperture_identifiers=apertures,
-    louver_count=5,
-    depth=0.5
-)
-
-# Step 3: Verify
-query_shades(
-    query_model(outdoor_shades=True)["outdoor_shades"],
-    area=True
+add(
+    operation="apertures_by_ratio",
+    target_type="face",
+    identifiers=exterior_walls,
+    params={"ratio": 0.4}
 )
 ```
 
-### 10.3 Apply Building Properties
+### 10.2 Add Louvers
 
 ```python
-# Step 1: Search program types
-programs = search_properties(category="program_types", building_program="Office")
-# Returns: ["Office_Open", "Office_Enclosed", "Office_Meeting", ...]
+apertures = query(target_type="model", fields=["apertures"])["data"]["apertures"]
 
-# Step 2: Apply program type
-apply_room_attributes(program_type_identifier="Office_Open")
-
-# Step 3: Apply HVAC
-apply_hvac(system_category="Ideal")
-
-# Step 4: Verify
-query_room(general_properties=True, hvac_properties=True)
+add(
+    operation="louvers_by_count",
+    target_type="aperture",
+    identifiers=apertures,
+    params={"louver_count": 5, "depth": 0.5}
+)
 ```
 
-### 10.4 Remove Specific Shade Types
+### 10.3 Apply Room Properties
 
 ```python
-# Step 1: Query all shades
-shades_info = query_model(shades=True, shade_meshes=True)
+apply(
+    operation="room_attributes",
+    target_type="room",
+    values={"program_type_identifier": "Office_Open"}
+)
 
-# Step 2: If both types exist, ask user
-if shades_info["shades"] and shades_info["shade_meshes"]:
-    # Ask user which type to remove
-    pass
+apply(
+    operation="hvac",
+    target_type="room",
+    values={"system_category": "Ideal"}
+)
+```
 
-# Step 3: Remove
-remove_all_shades()  # Remove all
-# Or
-remove_all_shades(shade_mesh_ids=["Tree_1", "Building_2"])  # Remove specific ShadeMesh only
+### 10.4 Remove Shade-Related Objects
+
+```python
+remove(operation="all_shades")
+```
+
+```python
+remove(
+    operation="all_shades",
+    identifiers=["Tree_1", "Building_2"]
+)
 ```
 
 ---
 
 ## 11. Error Handling
 
-### 11.1 Common Error Types
+### 11.1 Common Errors
 
-| Error Type | Cause | Solution |
-|---------|------|---------|
-| `No model loaded` | Model not loaded | Call `load_model()` first |
-| `Model not found` | Incorrect file path | Check if path is correct |
-| `Invalid identifier` | Identifier doesn't exist | Query first to get correct identifiers |
-| `Geometry error` | Invalid geometry data | Use `cleanup_irrational=True` |
-| `Shared memory error` | Shared memory issue | Try `clear_shared_memory_model()` |
+- `No model loaded`
+- `Model not found`
+- `Invalid identifier`
+- `Invalid operation`
+- `Invalid field path`
+- `Shared memory error`
 
-### 11.2 Error Return Format
+### 11.2 Return Shape
+
+The recommended stable return shape is:
 
 ```python
 {
-    "success": False,
-    "error": "Error message here",
-    "hint": "Suggested action to resolve the error"
+    "success": bool,
+    "message": str,
+    "error": str,
+    "hint": str
 }
 ```
 
-### 11.3 Error Recovery Strategy
-
-```python
-# 1. Check return value
-result = some_tool()
-if not result.get("success"):
-    print(f"Error: {result.get('error')}")
-    if result.get("hint"):
-        print(f"Hint: {result.get('hint')}")
-
-# 2. Use version control to recover
-if critical_error:
-    version_control("undo")
-
-# 3. Reload model
-load_model_from_dict(version_data["model_dict"])
-```
+For `query`, `apply`, `add`, and `remove`, preserving a stable response style is preferred over allowing each operation branch to drift into its own custom shape.
 
 ---
 
 ## 12. Code Standards
 
-### 12.1 Tool Definition Standard
+### 12.1 New Work Should Follow the Refactored Architecture
 
-```python
-@mcp.tool()
-def tool_name(param1: type, param2: type = default) -> dict:
-    """
-    Brief description of the tool.
-    
-    Detailed description with any important notes.
-    
-    Args:
-        param1: Description of parameter 1.
-        param2: Description of parameter 2.
-    
-    Returns:
-        Dictionary with results including success status.
-    """
-    # 1. Check model state
-    if manager.model is None:
-        return {
-            "success": False,
-            "message": "No model loaded."
-        }
-    
-    # 2. Execute operation
-    try:
-        # ... operation code ...
-        return {
-            "success": True,
-            "message": "Operation completed.",
-            # other return data
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
-```
+New code should primarily be placed under:
 
-### 12.2 Return Value Standard
+- `tools/state`
+- `tools/sync`
+- `tools/operations`
 
-All tools should return a dictionary containing:
+Only modify legacy wrapper files when compatibility truly requires it.
 
-```python
-{
-    "success": bool,      # Required: whether operation succeeded
-    "message": str,       # Optional: status message
-    "error": str,         # On failure: error message
-    "hint": str,          # On failure: resolution suggestion
-    # ... other data fields
-}
-```
+### 12.2 Naming
 
-### 12.3 Naming Conventions
+- Tool functions: `snake_case`
+- Classes: `PascalCase`
+- Constants: `UPPER_SNAKE_CASE`
 
-- **Tool Functions**: `snake_case` (e.g., `add_apertures_by_ratio`)
-- **Parameters**: `snake_case` (e.g., `face_identifiers`)
-- **Class Names**: `PascalCase` (e.g., `Model_Manager`, `SharedMemoryManager`)
-- **Constants**: `UPPER_SNAKE_CASE` (e.g., `MAX_VERSIONS`, `HEADER_SIZE`)
+### 12.3 Preferred Extension Strategy
 
-### 12.4 Docstring Standard
+When adding a new feature:
 
-```python
-"""
-Brief one-line description.
+1. First decide whether it belongs to `query`, `apply`, `add`, or `remove`.
+2. Then decide whether the change is a new field, a new registered operation, or a service implementation change.
+3. Only after that should you consider whether a compatibility wrapper is still needed.
 
-Extended description with more details about the tool's behavior,
-important notes, and usage guidelines.
+### 12.4 Documentation Policy
 
-Args:
-    param1 (type): Description. Default: value.
-    param2 (type): Description. Default: value.
-
-Returns:
-    dict: Description of return value structure.
-"""
-```
+Documentation should describe the refactored architecture as the primary story. The older flat tool layout should no longer be the main narrative.
 
 ---
 
-## Appendix A: HVAC System Types Reference
+## 13. HBJSON Resource Extension Pattern
 
-### A.1 System Categories
+### 13.1 Treat Energy and Radiance Resources as HBJSON-Native Data
 
-| Category | Description | Typical Systems |
-|------|------|---------|
-| Ideal | Ideal Air System | IdealAirSystem |
-| AllAir | All-Air Systems | VAV, PVAV, PSZ-AC, PTAC |
-| DOAS | Dedicated Outdoor Air Systems | FCUwithDOAS, RadiantwithDOAS |
-| HeatCool | Heating and Cooling Systems | Baseboard, Radiant, VRF, WSHP |
-| SHW | Service Hot Water Systems | GasWaterHeater, ElectricWaterHeater |
+When extending `honeybee-energy` or `honeybee-radiance`, agents should start from the HBJSON resource model instead of thinking only about runtime Python objects.
 
-### A.2 Standard Vintages
+The key questions are:
 
-- ASHRAE_2004, ASHRAE_2007, ASHRAE_2010, ASHRAE_2013, ASHRAE_2016, ASHRAE_2019
-- DOE_Ref_1980-2004, DOE_Ref_2004, DOE_Ref_2007, DOE_Ref_2010, DOE_Ref_2013
+1. Is the target object a reusable resource, a host-attached object, or both?
+2. Will Honeybee preserve it automatically in `model.to_dict()`?
+3. If not, how should MCP preserve it so that `save / load / version / shared memory` remain lossless?
+
+The current project answer is:
+
+- reusable resources belong to model-bound MCP resource stores in `tools/state`
+- host-attached objects still belong on Honeybee model objects
+- the final persistence target should remain `HBJSON.properties.energy` or `HBJSON.properties.radiance`
+
+### 13.2 Resource Store Pattern
+
+When the Honeybee runtime cannot reliably preserve unattached resources, agents should introduce a model-bound resource store and connect it to `ModelManager`.
+
+Current examples:
+
+- `tools/state/energy_resources.py`
+- `tools/state/radiance_resources.py`
+
+This pattern should include:
+
+- empty store initialization
+- loading or rebuilding from HBJSON dictionary data
+- collecting resources already attached to the loaded model
+- merging MCP-managed resources back into serialized HBJSON
+- register, unregister, and resolve helpers
+- an explicit distinction between `session_store` and `model_attached`
+
+### 13.3 Resolver Precedence Must Be Explicit
+
+Whenever a tool accepts an identifier for a reusable resource, the resolution order should be explicit and stable.
+
+Recommended precedence:
+
+1. MCP resource store
+2. currently attached model resources
+3. official Honeybee library
+
+This rule should be documented in service helpers instead of being left implicit in scattered business code.
+
+### 13.4 Extend Unified Buses, Not New Top-Level Tools
+
+For both Energy and Radiance, the preferred public surface remains:
+
+- `query`
+- `add`
+- `apply`
+- `remove`
+
+Agents should not create one-off public wrappers such as `create_schedule.py`, `add_modifier.py`, or `edit_sensor_grid.py`. New capability should be registered inside the existing buses and delegated to service modules.
+
+### 13.5 Persistence Is a Full Chain
+
+Any new resource family is incomplete unless it is wired through the full persistence chain:
+
+1. `load_model` / `load_model_from_dict`
+2. `manager.serialized_model_dict()`
+3. `save_model`
+4. shared-memory read and write
+5. version control save, load, undo, and redo
+
+If one of these layers is skipped, the feature should still be considered unfinished.
+
+### 13.6 Safe Removal Is Required
+
+Reusable resources must not be removed blindly.
+
+Before deletion, agents should check references from:
+
+- rooms
+- faces
+- apertures
+- doors
+- shades
+- schedules or modifier sets
+- HVAC, SHW, process loads, or other higher-level objects
+
+If references exist, the delete operation should be blocked and should return a readable reference summary.
 
 ---
 
-## Appendix B: Honeybee Model Element Hierarchy
+## 14. Planning Lessons from Energy and Radiance Work
 
-```
-Model
-├── rooms[]                    # Room list
-│   ├── faces[]               # Face list
-│   │   ├── apertures[]       # Aperture list
-│   │   │   ├── indoor_shades[]   # Indoor shades
-│   │   │   └── outdoor_shades[]  # Outdoor shades
-│   │   ├── doors[]           # Door list
-│   │   │   ├── indoor_shades[]
-│   │   │   └── outdoor_shades[]
-│   │   ├── indoor_shades[]   # Face indoor shades
-│   │   └── outdoor_shades[]  # Face outdoor shades
-│   └── indoor_shades[]       # Room indoor shades
-│
-├── orphaned_faces[]          # Orphaned faces
-├── orphaned_apertures[]      # Orphaned apertures
-├── orphaned_doors[]          # Orphaned doors
-├── outdoor_shades[]          # Outdoor shades (attached)
-├── indoor_shades[]           # Indoor shades (attached)
-└── shade_meshes[]            # Shade meshes (independent geometry)
-```
+### 14.1 The Shared Structure of the Two Plans
 
----
+The two recent expansion plans succeeded because they shared the same planning backbone.
 
-## Appendix C: Quick Reference Card
+They first grounded themselves in the real Honeybee and HBJSON object model. They did not assume that a Python object being constructible automatically meant it was persistable, reloadable, or safely deletable.
 
-### Load Model
-```python
-load_model()                          # Auto-detect
-load_model("latest")                  # Latest GH model
-load_model("/path/to/file.hbjson")    # From file
-```
+They then separated reusable resources from host-attached objects. This was the central architectural move. For Energy, schedules and constructions were treated differently from room loads. For Radiance, modifiers and modifier sets were treated differently from sensor grids and views.
 
-### Query Model
-```python
-query_model(rooms=True, floor_area=True)
-query_faces(["Face_1"], area=True, aperture_ratio=True)
-query_room(["Room_1"], hvac_properties=True)
-```
+They also treated persistence as part of the feature definition. A capability was not considered supported merely because an object could be instantiated or assigned. It had to survive:
 
-### Add Windows
-```python
-add_apertures_by_ratio(faces, ratio=0.4)
-add_aperture_by_width_height(faces, width=2, height=1.5)
-```
+- query
+- save
+- reload
+- shared-memory sync
+- version restore
 
-### Add Shades
-```python
-add_louvers_by_count(apertures, louver_count=5, depth=0.5)
-add_louvers_by_distance_between(apertures, distance=0.3, depth=0.5)
-```
+Finally, both plans used the same verification loop:
 
-### Apply Properties
-```python
-apply_room_attributes(program_type_identifier="Office_Open")
-apply_hvac(system_category="Ideal")
-apply_window_attributes(construction_identifiers=["DoubleGlazed"])
-```
+`create -> attach or reference -> query -> save -> reload -> query again`
 
-### Version Control
-```python
-version_control("save", description="Before major changes")
-version_control("list", model_name="MyModel")
-version_control("undo")
-```
+This should be treated as the default acceptance path for future cross-cutting extensions.
+
+### 14.2 What Was Worth Keeping
+
+The most valuable shared qualities were:
+
+- decisions based on actual class interfaces and `to_dict()/from_dict()` behavior
+- preservation of the unified bus surface
+- early definition of resolver precedence
+- HBJSON as the persistence target
+- early query visibility so new resources were inspectable
+- reference-safe deletion design
+- roundtrip tests instead of only isolated object-creation tests
+
+### 14.3 Recommended Future Agent Workflow
+
+When adding a new object family, agents should follow this order:
+
+1. inspect Honeybee and HBJSON native schema plus runtime behavior
+2. classify objects into reusable resources versus host-attached objects
+3. decide whether a model-bound MCP resource store is needed
+4. add query visibility first
+5. add create, update, and delete support through the unified buses
+6. wire serialization through load, save, versioning, and shared memory
+7. add roundtrip tests covering create, attach, persist, reload, and safe delete
+
+### 14.4 Future Expansion Checklist
+
+Before considering an AGENTS-guided extension complete, confirm all of the following:
+
+- the object family can be queried through `query`
+- the object family can be created through `add`
+- the object family can be updated or assigned through `apply`
+- the object family can be removed through `remove`, with reference safety when needed
+- the object family survives `save_model` and `load_model`
+- the object family survives shared-memory auto-save if it participates in model serialization
+- the object family survives version control save, load, undo, and redo
+- tests include at least one HBJSON roundtrip case
 
 ---
 
-*Document Version: 1.1*
-*Last Updated: 2026-03*
-*Applicable to Honeybee-MCP beta version*
+*Document Version: 2.1*  
+*Last Updated: 2026-03-10*  
+*This document reflects the refactored Honeybee-MCP architecture.*

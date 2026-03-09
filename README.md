@@ -1,586 +1,542 @@
-# Honeybee-MCP(beta)
+# Honeybee-MCP
 
-<img src="src\resource\Honeybee-MCP.png" alt="Honeybee-MCP" width="150">
+<img src="src/resource/Honeybee-MCP.png" alt="Honeybee-MCP" width="150">
 
-Honeybee-MCP is a sophisticated Model Context Protocol (MCP) server designed to bridge the gap between Large Language Models (LLMs) and the Honeybee ecosystem for building energy modeling (BEM). 
+Honeybee-MCP is a local `Model Context Protocol` (MCP) server for the Honeybee ecosystem. It is designed to let an AI IDE load, inspect, edit, synchronize, visualize, and version Honeybee models through a stable tool surface instead of a growing collection of one-off scripts. The current implementation supports `honeybee-core`, `honeybee-energy`, `honeybee-radiance`, and bidirectional collaboration with Grasshopper through shared memory.
 
-The primary objective of Honeybee-MCP is to provide a seamless integration layer for manipulating HBJSON and HBpkl files within AI-augmented design environments. It abstracts the underlying complexities of the honeybee-core libraries, offering a set of high-level tools that allow an AI to "understand" and "modify" 3D building models. 
+The project has already moved beyond the older pattern of scattered object-specific tools. Its current architecture is centered on a unified bus model: `query`, `apply`, `add`, and `remove` are the primary editing interfaces, while state management, resource preservation, shared-memory synchronization, visualization export, library search, and version history are handled by dedicated support layers. In practice, this means the server is no longer limited to editing host objects such as rooms, faces, and apertures. It also manages reusable HBJSON-native Energy and Radiance resources so that schedules, modifiers, modifier sets, sensor grids, and views can survive save, reload, version restore, and Grasshopper sync.
 
-> **Note:** This MCP server only supports **local deployment**. 
+> **Note**
+> Honeybee-MCP is currently intended for local deployment. It assumes that the model files, the Python environment, the AI IDE, and any Grasshopper shared-memory exchange all run on the same machine or in a directly accessible local environment.
 
-## Documentation
+## Contents
 
-For a comprehensive tutorial on how to use Honeybee-MCP, please refer to the [Tutorial.pdf](src/docs/Tutorial.pdf). 
+1. [What This Project Does](#what-this-project-does)
+2. [Architecture Overview](#architecture-overview)
+3. [Tool Architecture Diagram](#tool-architecture-diagram)
+4. [Repository Structure](#repository-structure)
+5. [Public MCP Tools](#public-mcp-tools)
+6. [Installation and Startup](#installation-and-startup)
+7. [MCP Client Configuration](#mcp-client-configuration)
+8. [Recommended Workflows](#recommended-workflows)
+9. [Grasshopper Collaboration Flow](#grasshopper-collaboration-flow)
+10. [Usage Examples](#usage-examples)
+11. [Visualization Exports](#visualization-exports)
+12. [Resource Search and Safe Removal](#resource-search-and-safe-removal)
+13. [Version Control and Persistence](#version-control-and-persistence)
+14. [Documentation Entry Points](#documentation-entry-points)
 
-For AI Agents working guide, see [AGENTS.md](AGENTS.md).
+## What This Project Does
 
-### Quick Start Guide
+Honeybee-MCP gives an AI agent a stable working interface for Honeybee models. A typical session begins by loading a model from disk, a Python dictionary, or Grasshopper shared memory. The agent can then query model objects, create new geometry-related objects, apply Energy or Radiance attributes, remove geometry or reusable resources, verify the result, visualize the current state, and save or synchronize the model. All of those actions pass through a small set of consistent MCP tools.
 
-1. **Clone the repository** from [GitHub](https://github.com/LoftyTao/Honeybee-MCP).
-2. **Install an AI IDE** .(OpenCode, Cursor, VS Code, etc.)
-3. **Configure MCP** Automatically build the project through AI Agent.
-4. **Configure Skills** Add the skills directory to your AI IDE configuration.
-5. **Use prompts** to interact with your Honeybee models.
+This design matters because Honeybee workflows frequently cross the boundary between geometry, simulation properties, and reusable libraries. A model-editing server is only partially useful if it can assign a schedule or modifier in memory but cannot preserve that object through `HBJSON`, reload it later, or restore it from version history. Honeybee-MCP treats persistence as part of feature support. A capability is considered complete only when it participates correctly in load, query, edit, save, reload, shared-memory sync, and version recovery.
 
-## Technical Requirements and Installation
+## Architecture Overview
 
-### Prerequisites
+The current codebase is organized around a layered architecture.
 
-To ensure stability and performance, the server requires:
+The first layer is the **state layer**, centered on `tools/state/manager.py`. It owns the currently loaded model, remembers where that model came from, and provides a serialization path that merges managed Energy and Radiance resources back into the HBJSON dictionary. The state layer also hosts post-edit hooks so that editing tools do not need to implement their own shared-memory or auto-save logic.
 
-- **Python 3.8 or higher**
-- **Ladybug Tools 1.10** (including Ladybug Tools SDK 1.10)
+The second layer is the **operation layer**, centered on `tools/operations`. This is where the unified buses live. `query` reads model or resource data. `apply` updates properties or resource definitions. `add` creates new geometry-related objects, Energy resources, or Radiance resources. `remove` deletes objects while enforcing safety checks for reusable resources that may still be referenced elsewhere.
 
-The server is built upon the fastmcp framework, which handles the asynchronous communication between the AI IDE and the Python runtime.
+The third layer is the **support layer**, which includes `tools/sync`, `tools/library`, `tools/visualization`, and `tools/versioning`. These modules handle Grasshopper shared memory, library lookups for standards or resource search, read-only visualization exports, and version snapshots with undo and redo behavior.
 
-### Installation Procedure
+The fourth layer is the **client collaboration layer**, which is how AI IDEs and Grasshopper components actually use the server. An MCP client invokes the public tools. Grasshopper can write a model into shared memory, let the AI edit it, and then read the updated model back after the shared-memory post-edit pipeline has written the new HBJSON payload.
 
-First, clone the repository to your local machine:
+## Tool Architecture Diagram
 
-**Option 1: Using Git**
+The following diagram shows the main architectural relationship between the public tools and the internal layers that support them.
 
-```
-git clone https://github.com/yourusername/Honeybee-MCP.git
-cd Honeybee-MCP
-```
+```mermaid
+flowchart TB
+    Client["AI IDE / MCP Client"] --> Surface["Public MCP Tool Surface"]
 
-**Option 2: Using GitHub Desktop**
+    subgraph SurfaceGroup["Public Tool Surface"]
+        Surface --> Load["load_model / load_model_from_dict / save_model"]
+        Surface --> Query["query"]
+        Surface --> Apply["apply"]
+        Surface --> Add["add"]
+        Surface --> Remove["remove"]
+        Surface --> Search["search_properties"]
+        Surface --> Visual["visualization"]
+        Surface --> Sync["shared memory tools"]
+        Surface --> Version["version_control"]
+    end
 
-Whether you're new to Git or a seasoned user, GitHub Desktop simplifies your development workflow.
+    subgraph Ops["Unified Operation Layer"]
+        Query --> QueryBus["query_bus.py"]
+        Apply --> ApplyBus["apply_bus.py"]
+        Add --> AddBus["add_bus.py"]
+        Remove --> RemoveBus["remove_bus.py"]
+        ApplyBus --> OpServices["apply_service.py / energy_resource_service.py / radiance_resource_service.py"]
+        AddBus --> OpServices
+        RemoveBus --> OpServices
+        QueryBus --> OpServices
+    end
 
-1. Download and install [GitHub Desktop](https://github.com/apps/desktop)
-2. Open GitHub Desktop and go to `File` > `Clone Repository`
-3. Enter the repository URL: `https://github.com/yourusername/Honeybee-MCP.git`
-4. Choose a local path and click `Clone`
+    subgraph State["State and Resource Preservation"]
+        Load --> Manager["state/manager.py"]
+        OpServices --> Hooks["state/hooks.py"]
+        Manager --> EnergyStore["energy_resources.py"]
+        Manager --> RadianceStore["radiance_resources.py"]
+        Hooks --> Manager
+    end
 
-We recommend using **native Python** for creating virtual environments, which is the standard and most compatible approach.
+    subgraph Support["Support Systems"]
+        Search --> Library["library/service.py"]
+        Visual --> Visualization["visualization/service.py"]
+        Sync --> SharedMemory["sync/service.py + shared_memory.py"]
+        Version --> Versioning["versioning/service.py + store.py"]
+        Hooks --> SharedMemory
+        Manager --> Versioning
+        Manager --> SharedMemory
+    end
 
-#### Option 1: Using native Python (Recommended)
-
-1. Navigate to the project directory:
-
-```
-cd path/to/Honeybee-MCP
-```
-
-2. Create a virtual environment in the project folder:
-
-Windows:
-```
-python -m venv venv
-```
-
-Unix/macOS:
-```
-python3 -m venv venv
-```
-
-3. Install dependencies:
-
-```
-pip install -r requirements.txt
-```
-
-4. Activate the environment:
-
-Windows:
-```
-venv\Scripts\activate
-```
-
-Unix/macOS:
-```
-source venv/bin/activate
-```
-
-#### Verification
-
-Execute the server locally to confirm the transport layer is functioning:
-
-```
-python server.py
+    SharedMemory --> Grasshopper["Grasshopper Reader / Writer"]
 ```
 
-## IDE Configuration
+This diagram highlights the most important rule for future extension work: new capabilities should usually be registered inside the existing buses or support systems rather than added as new top-level object-specific tools. If a feature is fundamentally a query, an update, an addition, a deletion, a shared-memory action, a visualization export, or a versioning action, it should extend the corresponding subsystem directly.
 
-### OpenCode Integration
+## Repository Structure
 
-Create or edit the `.opencode/opencode.json` file in your project directory:
+The current repository layout is intentionally aligned with the refactored architecture.
 
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "honeybee-mcp": {
-      "type": "local",
-      "command": [
-        "./venv/Scripts/python.exe",
-        "./server.py"
-      ],
-      "enabled": true
-    }
-  },
-  "skills": {
-    "directories": [
-      "./agent/skills"
-    ]
-  }
-}
-```
-
-**Configuration Notes:**
-- `mcp.honeybee-mcp.command`: Path to Python executable and server.py
-- `skills.directories`: Path to the skills directory containing Honeybee-MCP skills
-
-### Other AI IDEs
-
-Honeybee-MCP is compatible with MCP-enabled IDEs including:
-
-- **VS Code** - Via MCP extensions
-- **Cursor** - Built-in MCP support
-- **Trae** - Native MCP integration
-- **Other AI IDE**
-
-For these IDEs, navigate to the MCP settings panel and add a new server. Configure the command to point to your Python executable (from the virtual environment) and the arguments to include the path to `server.py`.
-
-## Skills Configuration
-
-### What are Skills?
-
-Skills are structured documentation files that help AI Agents understand when and how to use specific tools. Honeybee-MCP includes a comprehensive skills system that provides:
-
-- **Workflow guidance** for common modeling tasks
-- **Tool selection criteria** based on user intent
-- **Quick examples** for rapid implementation
-- **Best practices** and error handling strategies
-
-### Skills Directory Structure
-
-```
-agent/skills/Honeybee-MCP/
-├── SKILL.md                    # Main skill entry point
-├── model-loader/SKILL.md       # Load models from files/GH
-├── model-saver/SKILL.md        # Save models to files
-├── query/SKILL.md              # Query model properties
-├── aperture-adder/SKILL.md     # Add windows/skylights
-├── aperture-remover/SKILL.md   # Remove windows
-├── louver-adder/SKILL.md       # Add louvers/overhangs
-├── shade-remover/SKILL.md      # Remove shades
-├── door-editor/SKILL.md        # Edit doors
-├── model-editor/SKILL.md       # General editing
-├── apply-properties/SKILL.md   # Apply constructions/HVAC
-├── search-lib/SKILL.md         # Search library
-├── grasshopper-sync/SKILL.md   # GH synchronization
-└── version-control/SKILL.md    # Undo/redo versions
-```
-
-### Configuring Skills in OpenCode
-
-To enable Honeybee-MCP skills in OpenCode, add the skills directory to your configuration:
-
-**Method 1: Project-level configuration (`.opencode/opencode.json`)**
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "honeybee-mcp": {
-      "type": "local",
-      "command": [
-        "./venv/Scripts/python.exe",
-        "./server.py"
-      ],
-      "enabled": true
-    }
-  },
-  "skills": {
-    "directories": [
-      "./agent/skills"
-    ]
-  }
-}
-```
-
-**Method 2: User-level configuration**
-
-For global access across all projects, you can configure skills in your user-level OpenCode settings:
-
-```json
-{
-  "skills": {
-    "directories": [
-      "C:/path/to/Honeybee-MCP/agent/skills"
-    ]
-  }
-}
-```
-
-### Configuring Skills in Other AI IDEs
-
-#### Cursor
-
-In Cursor, skills can be configured via the settings:
-
-1. Open Cursor Settings (`Ctrl+,` or `Cmd+,`)
-2. Navigate to **Features** → **Skills** or **Context**
-3. Add the skills directory path:
-   ```
-   C:\path\to\Honeybee-MCP\agent\skills
-   ```
-4. Restart Cursor to apply changes
-
-Alternatively, create a `.cursorrules` file in your project:
-
-```
-Skills Directory: ./agent/skills
-```
-
-#### VS Code (with MCP Extension)
-
-1. Install an MCP-compatible extension
-2. Open VS Code settings (`settings.json`)
-3. Add the skills configuration:
-
-```json
-{
-  "mcp.skills.directories": [
-    "${workspaceFolder}/agent/skills"
-  ]
-}
-```
-
-#### Trae
-
-Trae has native MCP and skills support:
-
-1. Open Trae Settings
-2. Navigate to **MCP Configuration**
-3. Add skills directory in the **Context** or **Skills** section
-4. Use the workspace-relative path: `./agent/skills`
-
-### Verifying Skills Configuration
-
-To verify that skills are properly configured, ask your AI Agent:
-
-```
-What skills are available for Honeybee-MCP?
-```
-
-The agent should be able to list and describe the available skills:
-
-| Skill Name | Description |
-|------------|-------------|
-| `honeybee-mcp` | Main skill - comprehensive toolkit overview |
-| `honeybee-model-loader` | Load models from files or Grasshopper |
-| `honeybee-model-saver` | Save models to files |
-| `honeybee-query` | Query model properties |
-| `honeybee-aperture-adder` | Add windows/skylights |
-| `honeybee-aperture-remover` | Remove windows |
-| `honeybee-louver-adder` | Add louvers/overhangs |
-| `honeybee-shade-remover` | Remove shades |
-| `honeybee-door-editor` | Edit doors |
-| `honeybee-model-editor` | General model editing |
-| `honeybee-apply-properties` | Apply constructions/HVAC |
-| `honeybee-search-lib` | Search library properties |
-| `honeybee-grasshopper-sync` | Grasshopper synchronization |
-| `honeybee-version-control` | Version control/undo-redo |
-
-### Using Skills Effectively
-
-Once skills are configured, the AI Agent will automatically:
-
-1. **Understand context** - Know which tools to use for specific tasks
-2. **Follow workflows** - Execute operations in the correct order
-3. **Handle errors** - Recover from issues using version control
-4. **Provide guidance** - Explain what's happening at each step
-
-**Example prompts that leverage skills:**
-
-```
-Load my model from Grasshopper and add 40% windows to south-facing walls
-```
-
-```
-Apply office program type and Ideal Air HVAC to all rooms
-```
-
-```
-Add louvers to all windows with 0.5m depth and 0.3m spacing
-```
-
-```
-Show me the model summary and window-to-wall ratios
-```
-
-## Grasshopper Integration
-
-Honeybee-MCP provides Grasshopper components for real-time model exchange between Grasshopper and AI IDE via shared memory (memory-mapped files).
-
-### Components
-
-Two Grasshopper components are provided:
-
-| Component | File | Description |
-|-----------|------|-------------|
-| **HB-MCP Writer** | `HB-MCP Writer.ghuser` | Write Honeybee Model to shared memory |
-| **HB-MCP Reader** | `HB-MCP Reader.ghuser` | Read Honeybee Model from shared memory (manual & auto modes) |
-
-### Installation
-
-1. **Using .ghuser files (Recommended):**
-   - The `.ghuser` files are located in `grasshopper/user_object/`
-   - In Grasshopper, go to `File → Special Folders → User Object Folder`
-   - Copy `HB-MCP Reader.ghuser` and `HB-MCP Writer.ghuser` to this folder
-   - Restart Grasshopper - components will appear under `HB-MCP → 0 :: Mcp` category
-
-2. **Using Python Script component:**
-   - Source code is available in `grasshopper/src/`
-   - Create a Python Script component in Grasshopper
-   - Copy the contents of `HB-MCP Reader.py` or `HB-MCP Writer.py` into the component
-
-### Usage Workflow
-
-```
-┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
-│  Honeybee Model │      │  HB-MCP Writer  │      │  Shared Memory  │
-│   (Grasshopper) │ ───► │                 │ ───► │   (.mmap file)  │
-└─────────────────┘      └─────────────────┘      └────────┬────────┘
-                                                           │
-                                                           ▼
-┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
-│  Honeybee Model │      │  HB-MCP Reader  │      │    AI IDE +     │
-│   (Modified)    │ ◄─── │                 │ ◄─── │  Honeybee-MCP   │
-└─────────────────┘      └─────────────────┘      └─────────────────┘
-```
-
-### Demo
-
-![Grasshopper and OpenCode CLI Interaction](src/resource/gh-sample.gif)
-
-*Demonstration of Grasshopper components interacting with OpenCode CLI for real-time model editing.*
-
-**Step-by-step:**
-
-1. **Writer Component:**
-   - Input: Connect a Honeybee Model to `_model`
-   - Input: Set `_write=True` to write to shared memory
-   - Output: `name` (auto-derived from model's display_name)
-
-2. **AI IDE:**
-   - Use `load_model_from_shared_memory` to load the model
-   - Modify the model using MCP tools
-   - **Auto-save**: All edits are automatically saved back to shared memory when model is loaded from shared memory
-   - (Optional) Use `save_model_to_shared_memory` for manual backup or different names
-
-3. **Reader Component:**
-   - Input: Connect `name` from Writer to `_name`
-   - Input: Set `_read=True` to read from shared memory
-   - Output: Modified Honeybee Model
-
-### Auto-Save Feature
-
-**Important**: When a model is loaded from Grasshopper shared memory, all editing operations automatically save the model back to shared memory. This provides a seamless workflow without requiring manual save calls.
-
-**Auto-save behavior:**
-- Automatically triggers after each edit operation
-- Saves to the same shared memory name used for loading
-- Creates version snapshots for undo capability
-- Only applies to models loaded from shared memory
-
-**When to use manual save:**
-- Save model from file to shared memory
-- Save to a different shared memory name
-- Create backups with different names
-- Manually control save timing
-
-**Auto-save response:**
-When auto-save triggers, editing tools return an additional `auto_save` field in their response:
-```python
-{
-  "success": True,
-  "message": "Apertures added successfully",
-  "auto_save": {
-    "auto_saved": True,
-    "message": "Model saved to shared memory successfully",
-    "source_name": "hb_model_shared"
-  }
-}
-```
-
-### Component Details
-
-#### HB-MCP Writer
-
-| Input | Type | Description |
-|-------|------|-------------|
-| `_model` | Model | Honeybee Model object |
-| `_write` | Boolean | Set to True to write |
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `report` | List | Status messages |
-| `name` | String | Shared memory name (model display_name) |
-| `success` | Boolean | Write success status |
-
-#### HB-MCP Reader
-
-| Input | Type | Description |
-|-------|------|-------------|
-| `_name` | String | Shared memory name |
-| `_read` | Boolean | Set to True for manual read |
-| `_interval_` | Integer | Check interval in ms (default: 500) |
-| `run_` | Boolean | Set to True for auto-monitoring |
-| `clear_` | Boolean | Set to True to clear after reading |
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `report` | List | Status messages |
-| `model` | Model | Honeybee Model object |
-| `updated` | Boolean | True when model was just updated (auto mode) |
-
-## Project Architecture
-
-The repository is structured to separate the MCP protocol logic from the Honeybee geometry engines:
-
-```
+```text
 Honeybee-MCP/
-├── server.py              # Main entry point initializing the FastMCP server
-├── requirements.txt       # Python dependencies
-├── README.md              # Project documentation
-├── AGENTS.md              # AI Agent working guide
-├── tools/                 # Modular directory containing individual Python scripts
-│   ├── __init__.py
-│   ├── mcp_context.py     # MCP context management
-│   ├── load_model.py      # Model loading utilities
-│   ├── save_model.py      # Model saving utilities
-│   ├── query_model.py     # Model querying tools
-│   ├── query_room.py      # Room property queries
-│   ├── query_face.py      # Face property queries
-│   ├── query_aperture.py  # Aperture property queries
-│   ├── query_door.py      # Door property queries
-│   ├── query_shade.py     # Shade property queries
-│   ├── aperture_editor.py     # Aperture manipulation tools
-│   ├── face_editor.py         # Face manipulation tools
-│   ├── room_editor.py         # Room manipulation tools
-│   ├── model_editor.py        # Model-level editing tools
-│   ├── apply_all_face.py      # Apply attributes to faces
-│   ├── apply_hvac.py          # HVAC system configuration
-│   ├── apply_room.py          # Room-level attribute application
-│   ├── shared_memory.py       # Shared memory management
-│   ├── shared_memory_tools.py # Shared memory MCP tools
-│   ├── version_control.py     # Version control system
-│   ├── version_tools.py       # Version control MCP tools
-│   ├── hvac_config.json       # HVAC configuration presets
-│   └── search_properties_lib.py # Library property search
-├── grasshopper/           # Grasshopper integration
-│   ├── src/               # Source code for components
-│   │   ├── HB-MCP Reader.py
-│   │   └── HB-MCP Writer.py
-│   └── user_object/       # Compiled .ghuser components
-│       ├── HB-MCP Reader.ghuser
-│       └── HB-MCP Writer.ghuser
-├── agent/skills/          # AI Agent skill definitions
-│   └── Honeybee-MCP/
-│       ├── SKILL.md       # Main skill entry point
-│       └── ...            # 13 skill modules
-└── src/                   # Default directory for source files and outputs
-    ├── docs/              # Documentation
-    │   ├── Tutorial.pdf
-    │   └── Tutorial.typ
-    ├── resource/          # Project resources (images, etc.)
-    │   └── Honeybee-MCP.png
-    └── sample/            # Sample HBJSON files
-        └── Revit_Sample.hbjson
+|-- server.py
+|-- requirements.txt
+|-- README.md
+|-- AGENTS.md
+|-- tools/
+|   |-- __init__.py
+|   |-- mcp_context.py
+|   |-- load_model.py
+|   |-- save_model.py
+|   |-- state/
+|   |   |-- manager.py
+|   |   |-- hooks.py
+|   |   |-- summary.py
+|   |   |-- energy_resources.py
+|   |   `-- radiance_resources.py
+|   |-- operations/
+|   |   |-- common.py
+|   |   |-- query_bus.py
+|   |   |-- apply_bus.py
+|   |   |-- add_bus.py
+|   |   |-- remove_bus.py
+|   |   |-- apply_service.py
+|   |   |-- add_service.py
+|   |   |-- remove_service.py
+|   |   |-- energy_resource_service.py
+|   |   |-- radiance_resource_service.py
+|   |   `-- hvac_config.json
+|   |-- sync/
+|   |   |-- bus.py
+|   |   |-- service.py
+|   |   `-- shared_memory.py
+|   |-- library/
+|   |   |-- bus.py
+|   |   `-- service.py
+|   |-- visualization/
+|   |   |-- bus.py
+|   |   `-- service.py
+|   `-- versioning/
+|       |-- bus.py
+|       |-- service.py
+|       `-- store.py
+|-- grasshopper/
+|   |-- src/
+|   |   |-- HB-MCP Reader.py
+|   |   `-- HB-MCP Writer.py
+|   `-- test/
+|-- agent/
+|   `-- skills/
+`-- src/
 ```
 
-## Future Plan
+## Public MCP Tools
 
-At present, the Honeybee-MCP has relatively complete functions for querying, editing and applying the model. I expect to add more functions in the near future.
-
-- **Agent Skill and Prompts Templates.** ✅ (Completed)
-- **More tools for creating and editing Honeybee Properties.**
-- **The model exporter and the local preview method**
-- **From AI Agent to Simulation Capabilities**
-- **More MCP tools from the Ladybug Tools ecosystem**
-- ......
-
-## Available Tools
-
-The currently available and tested MCP tools：
+The recommended public interface is intentionally compact. Each tool has a clear responsibility.
 
 ### Model I/O
 
-| Tool Name | Description |
-| :--- | :--- |
-| load_model | Load Honeybee model from HBJSON/HBpkl file (auto-detects Grasshopper shared memory) |
-| load_model_from_dict | Load model from dictionary representation |
-| load_model_from_shared_memory | Load model from shared memory (Grasshopper) |
-| save_model | Save current model to HBJSON file |
-| save_model_to_shared_memory | Save model to shared memory (Grasshopper) - optional when using auto-save |
-| check_shared_memory_status | Check if model exists in shared memory |
-| clear_shared_memory_model | Clear shared memory segment |
+- `load_model`
+- `load_model_from_dict`
+- `save_model`
 
-**Note**: When a model is loaded from Grasshopper shared memory, all editing operations automatically save changes back to shared memory. Manual save is optional and useful for creating backups or saving to different names.
+These tools are used when the source of truth is a file path or a Python dictionary rather than Grasshopper shared memory.
 
-### Aperture Tools
+### Shared-memory collaboration
 
-| Tool Name | Description |
-| :--- | :--- |
-| add_louvers | Add louver shades to apertures |
-| add_louvers_by_count | Add louvers with specified count |
-| add_louvers_by_distance_between | Add louvers with specified spacing |
-| add_aperture_by_width_height | Add rectangular aperture by width/height |
-| add_apertures_by_ratio | Add apertures by area ratio |
-| add_apertures_by_ratio_rectangle | Add rectangular apertures by ratio |
-| add_apertures_by_ratio_gridded | Add gridded apertures by ratio |
-| add_apertures_by_width_height_rectangle | Add repeated rectangular apertures |
+- `load_model_from_shared_memory`
+- `save_model_to_shared_memory`
+- `check_shared_memory_status`
+- `clear_shared_memory_model`
+- `cleanup_shared_memory_cache`
 
-### Removal Tools
+These tools support bidirectional exchange between Grasshopper and the MCP server.
 
-| Tool Name | Description |
-| :--- | :--- |
-| remove_face_objects | Remove objects from faces |
-| remove_room_shades | Remove shades from rooms |
-| remove_all_apertures | Remove all apertures from model |
-| remove_all_doors | Remove all doors from model |
-| remove_all_shades | Remove all shades from model |
+### Unified edit surface
 
-### Query Tools
+- `query`
+- `apply`
+- `add`
+- `remove`
 
-| Tool Name | Description |
-| :--- | :--- |
-| query_model | Query model information and objects |
-| query_room | Query room properties with detailed Energy/Radiance attributes |
-| query_faces | Query face properties |
-| query_apertures | Query aperture properties |
-| query_doors | Query door properties |
-| query_shades | Query shade properties |
+These four tools are the primary authoring interface and should be treated as the default way to inspect and edit the model.
 
-### Apply Tools
+### Support tools
 
-| Tool Name | Description |
-| :--- | :--- |
-| apply_opaque_attributes | Apply Opaque Constructions (Energy) or Modifiers (Radiance) to faces, doors, or exterior walls |
-| apply_window_attributes | Apply Window Constructions (Energy) or Modifiers (Radiance) to apertures, glass doors, or child apertures |
-| apply_shade_attributes | Apply Shade Constructions (Energy) or Modifiers (Radiance) to shades or attached objects |
-| apply_hvac | Apply HVAC systems (Ideal, AllAir, DOAS, HeatCool, SHW) to rooms with advanced Radiant configuration |
-| apply_room_attributes | Apply Construction Set, Modifier Set, Program Type, or conditioning status to rooms |
+- `search_properties`
+- `visualization`
+- `version_control`
 
-### Search Tools
+These tools support lookup, reporting, export, and recovery tasks around the model-editing workflow.
 
-| Tool Name | Description |
-| :--- | :--- |
-| search_properties | Search for Constructions, Modifiers, Program Types, and Construction Sets in library |
+## Installation and Startup
 
-### Version Control Tools
+### Environment requirements
 
-| Tool Name | Description |
-| :--- | :--- |
-| version_control | Unified version control tool with actions: list, save, load, undo, redo, compare, info, delete, clear, cleanup |
+Honeybee-MCP depends on the Honeybee and Ladybug ecosystem, plus `fastmcp` for the MCP server runtime. The current dependency files cover the following top-level packages:
 
-**Note:** Version control is automatic. Every time a model is loaded or saved, a version is automatically recorded. Maximum 10 versions are kept in memory.
+- `honeybee-core`
+- `honeybee-display`
+- `honeybee-energy`
+- `honeybee-radiance`
+- `honeybee-energy-standards`
+- `honeybee-schema`
+- `honeybee-standards`
+- `ladybug-core`
+- `ladybug-display`
+- `ladybug-geometry`
+- `ladybug-geometry-polyskel`
+- `ladybug-vtk`
+- `fastmcp`
+- `vtk`
 
-**Shared Memory Cache Management:**
-- Automatic cleanup when loading models (keeps most recent 5 files)
-- Removes cache files older than 24 hours
-- Manual cleanup available via `cleanup_cache` tool
+### Dependency file strategy
+
+The repository now keeps two dependency entry points:
+
+- `requirements.txt` is the pinned runtime set. Use it when you want a reproducible installation that matches the versions currently validated in this repository.
+- `requirements-dev.txt` is the floating development set. Use it when you want to pull the latest available releases for the same top-level dependency list during active development and compatibility checks.
+
+### Install the project
+
+For a stable environment that matches the currently validated package set:
+
+```bash
+git clone https://github.com/yourusername/Honeybee-MCP.git
+cd Honeybee-MCP
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+For a development environment that tracks the latest available releases of the declared top-level dependencies:
+
+```bash
+git clone https://github.com/yourusername/Honeybee-MCP.git
+cd Honeybee-MCP
+python -m venv .venv
+.venv\Scripts\activate
+pip install -U -r requirements-dev.txt
+```
+
+### Start the MCP server
+
+```bash
+python server.py
+```
+
+The server entry point is intentionally small. `server.py` initializes the MCP context and imports the tool packages, and the tool packages register their MCP tools when imported.
+
+## MCP Client Configuration
+
+Any MCP-compatible client can launch Honeybee-MCP as a local server. The essential idea is always the same: point the client to the Python interpreter in the project environment and pass `server.py` as the startup script.
+
+The following example uses OpenCode:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "honeybee-mcp": {
+      "type": "local",
+      "command": [
+        "./.venv/Scripts/python.exe",
+        "./server.py"
+      ],
+      "enabled": true
+    }
+  },
+  "skills": {
+    "directories": [
+      "./agent/skills"
+    ]
+  }
+}
+```
+
+If you use another MCP client, the same pattern still applies. Configure a local server, point it to the Python executable that has the Honeybee dependencies installed, and make `server.py` the launched process.
+
+## Recommended Workflows
+
+### Standard model-editing workflow
+
+The most stable workflow is still "query first, edit second, verify third, save last." This pattern keeps the agent grounded in the actual model state before any edits are applied.
+
+```text
+1. Load a model
+   -> load_model() or load_model_from_shared_memory()
+
+2. Inspect the current state
+   -> query(...)
+
+3. Look up standards or reusable resources when needed
+   -> search_properties(...)
+
+4. Optionally export a read-only view for checking or reporting
+   -> visualization(...)
+
+5. Apply edits
+   -> add(...), apply(...), remove(...)
+
+6. Verify the edited result
+   -> query(...)
+
+7. Persist the result
+   -> save_model(), save_model_to_shared_memory(), or version_control(action="save")
+```
+
+### Resource-oriented workflow
+
+When the task involves reusable Energy or Radiance resources, it helps to think in two stages: first create or update the resource, then attach or reference it from a host object.
+
+For Energy work, a common sequence is:
+
+1. Create `ScheduleTypeLimit`.
+2. Create `ScheduleDay`.
+3. Create `ScheduleRuleset` or `ScheduleFixedInterval`.
+4. Apply the schedule to `people`, `lighting`, `setpoint`, `ventilation`, or `process_load`.
+5. Save and reload to confirm that the schedule survives the HBJSON roundtrip.
+
+For Radiance work, the same pattern applies:
+
+1. Create a reusable `modifier` or `modifier_set`.
+2. Assign it to `room`, `face`, `aperture`, `door`, or `shade`.
+3. Save and reload to confirm that the resource remains available and correctly attached.
+
+This distinction between reusable resources and host-attached objects is one of the central architectural ideas of the project.
+
+## Grasshopper Collaboration Flow
+
+Honeybee-MCP includes a shared-memory workflow for collaboration between Grasshopper and an AI IDE. The Grasshopper writer component publishes a model into shared memory, the MCP server loads and edits that model, and successful edits can be written back automatically through the post-edit pipeline.
+
+```mermaid
+flowchart LR
+    GHWriter["Grasshopper: HB-MCP Writer"] --> Shared["Shared Memory Slot"]
+    Shared --> Load["load_model_from_shared_memory()"]
+    Load --> State["ModelManager holds current model"]
+    State --> Query["query(...)"]
+    State --> AddApplyRemove["add(...) / apply(...) / remove(...)"]
+    AddApplyRemove --> Hooks["post-edit pipeline"]
+    Hooks --> SaveBack["auto-write updated HBJSON to shared memory"]
+    SaveBack --> GHReader["Grasshopper: HB-MCP Reader"]
+    AddApplyRemove --> Version["automatic version snapshot when configured"]
+```
+
+This flow is important for two reasons. First, it reduces manual file passing between Grasshopper and the AI environment. Second, it makes shared-memory editing behave like a proper model-authoring workflow rather than a temporary in-memory mutation. If the edited object is part of the serialized HBJSON model, the updated data can be written back to shared memory and recovered again later.
+
+## Usage Examples
+
+### Query model and room information
+
+```python
+query(
+    target_type="model",
+    fields=["identifier", "display_name", "rooms", "floor_area"]
+)
+
+query(
+    target_type="room",
+    fields=["identifier", "display_name"],
+    output_mode="list"
+)
+```
+
+### Add windows to selected faces
+
+```python
+add(
+    operation="apertures_by_ratio",
+    target_type="face",
+    identifiers=["Face_1", "Face_2"],
+    params={"ratio": 0.4}
+)
+```
+
+### Create and apply an Energy schedule
+
+```python
+add(
+    operation="schedule_type_limit",
+    target_type="model",
+    params={
+        "identifier": "OfficeFraction",
+        "lower_limit": 0,
+        "upper_limit": 1,
+        "numeric_type": "Continuous",
+        "unit_type": "Dimensionless"
+    }
+)
+
+add(
+    operation="schedule_day",
+    target_type="model",
+    params={
+        "identifier": "OfficeDay",
+        "values": [0, 1],
+        "times": ["00:00", "08:00"]
+    }
+)
+
+add(
+    operation="schedule_ruleset",
+    target_type="model",
+    params={
+        "identifier": "OfficeOccupancy",
+        "default_day_identifier": "OfficeDay",
+        "schedule_type_limit_identifier": "OfficeFraction"
+    }
+)
+
+apply(
+    operation="people",
+    target_type="room",
+    identifiers=["Room_1"],
+    values={
+        "people_per_area": 0.2,
+        "occupancy_schedule_identifier": "OfficeOccupancy"
+    }
+)
+```
+
+### Create and apply a Radiance modifier
+
+```python
+add(
+    operation="modifier",
+    target_type="model",
+    params={
+        "identifier": "TestPlastic",
+        "modifier_type": "plastic",
+        "r_reflectance": 0.5,
+        "g_reflectance": 0.5,
+        "b_reflectance": 0.5
+    }
+)
+
+apply(
+    operation="opaque_attributes",
+    target_type="face",
+    identifiers=["Face_1"],
+    values={"modifier_identifiers": ["TestPlastic"]}
+)
+```
+
+### Create a sensor grid and a view
+
+```python
+add(
+    operation="sensor_grid",
+    target_type="model",
+    params={
+        "identifier": "Grid_01",
+        "sensors": [
+            {"pos": [0, 0, 0.8], "dir": [0, 0, 1]}
+        ]
+    }
+)
+
+add(
+    operation="view",
+    target_type="model",
+    params={
+        "identifier": "View_01",
+        "position": [0, 0, 1.6],
+        "direction": [1, 0, 0],
+        "up_vector": [0, 0, 1]
+    }
+)
+```
+
+## Visualization Exports
+
+`visualization(...)` is the recommended read-only export interface. It does not modify the current model, and it does not trigger shared-memory write-back or post-edit side effects. Its job is to convert the full model or a selected subset into a `VisualizationSet` and optionally export files for inspection, communication, or downstream viewing.
+
+The current visualization workflow supports exporting:
+
+- `.vsf` as a `VisualizationSet` JSON file
+- `.svg` as a static or legend-enhanced vector graphic
+- `.html` as a locally viewable interactive page
+- `.vtkjs` as a packaged file for VTK or Pollination-style viewing workflows
+
+Example:
+
+```python
+visualization(
+    target_type="model",
+    export_formats=["vsf", "svg", "html"],
+    output_folder="D:/exports",
+    name="Sample_Visualization",
+    vis_options={"color_by": "boundary_condition", "include_wireframe": True},
+    svg_options={"width": 1600, "height": 900, "view": "Top"}
+)
+```
+
+## Resource Search and Safe Removal
+
+If you need to locate reusable standards or resources before assignment, use `search_properties(...)`. It can search categories such as schedules, schedule type limits, modifiers, modifier sets, construction-related resources, and other standards-backed properties. Search results distinguish whether a match came from a standards library, a model-bound resource, or a session-managed store.
+
+For deletion, `remove(...)` supports both geometry-oriented actions and resource-oriented actions. Geometry examples include `all_apertures`, `all_doors`, `all_shades`, `face_objects`, and `room_shades`. Resource-oriented removal covers objects such as `schedule`, `schedule_day`, `schedule_type_limit`, `modifier`, `modifier_set`, `sensor_grid`, `view`, and `process_loads`.
+
+Reusable resources are not removed blindly. Before deletion, the server checks whether a resource is still referenced by rooms, faces, apertures, doors, shades, or higher-level Energy and Radiance relationships. If references still exist, the delete request is blocked and a readable summary is returned instead of silently damaging the model.
+
+## Version Control and Persistence
+
+`version_control(action=...)` is the unified interface for model history. It supports:
+
+- `list`
+- `save`
+- `load`
+- `undo`
+- `redo`
+- `compare`
+- `info`
+- `delete`
+- `clear`
+- `cleanup`
+
+The important persistence detail is that version snapshots store the serialized model dictionary after managed Energy and Radiance resources have been merged into the HBJSON output. This means version restore is not limited to geometry. It can also restore reusable schedules, constructions, modifiers, modifier sets, sensor grids, and views, provided those objects participate in the serialized model state.
+
+For design exploration and simulation setup work, a good habit is to save a version before making large batch edits:
+
+```python
+version_control(action="save", description="Before custom schedules and modifiers")
+```
+
+## Documentation Entry Points
+
+If you want to go deeper than this overview, the following project documents are the most useful starting points:
+
+- [AGENTS.md](AGENTS.md) for the internal agent-facing architecture and extension guide
+- [Resource_Workflows.md](src/docs/Resource_Workflows.md) for end-to-end resource-oriented examples
+- [Tutorial.pdf](src/docs/Tutorial.pdf) for illustrated walkthrough material
+
+---
+
+*Document Version: 2.1*  
+*Last Updated: 2026-03-10*  
+*This README reflects the refactored unified-bus architecture.*

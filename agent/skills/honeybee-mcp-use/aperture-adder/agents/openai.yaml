@@ -1,0 +1,4 @@
+interface:
+  display_name: "Honeybee Aperture Adder"
+  short_description: "Help with Honeybee Aperture Adder tasks"
+  default_prompt: "Use $honeybee-aperture-adder to add parameterized apertures to selected faces."

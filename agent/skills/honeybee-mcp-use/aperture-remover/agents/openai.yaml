@@ -1,0 +1,4 @@
+interface:
+  display_name: "Honeybee Aperture Remover"
+  short_description: "Help with Honeybee Aperture Remover tasks"
+  default_prompt: "Use $honeybee-aperture-remover to delete apertures model-wide or from selected faces."

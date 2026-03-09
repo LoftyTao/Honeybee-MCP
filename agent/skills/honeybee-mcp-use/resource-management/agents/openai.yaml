@@ -1,0 +1,4 @@
+interface:
+  display_name: "Honeybee Resource Management"
+  short_description: "Help with Energy and Radiance resources"
+  default_prompt: "Use $honeybee-resource-management to work with reusable Energy or Radiance resources through the unified buses."
