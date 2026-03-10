@@ -78,6 +78,28 @@ remove(
 )
 ```
 
+## Reset-and-Rebuild Pattern
+
+A common pattern is to clear existing apertures and then re-add with new parameters:
+
+```python
+# 1. Query current state
+query(target_type="face", identifiers=["Face_1"],
+    fields=["identifier", "aperture_ratio", "apertures"])
+
+# 2. Clear existing apertures
+remove(operation="face_objects", identifiers=["Face_1"],
+    options={"apertures": True})
+
+# 3. Add new apertures with different parameters
+add(operation="apertures_by_ratio", target_type="face",
+    identifiers=["Face_1"], params={"ratio": 0.5})
+
+# 4. Verify new state
+query(target_type="face", identifiers=["Face_1"],
+    fields=["identifier", "aperture_ratio", "apertures"])
+```
+
 ## Return Guidance
 
 - Use `message` for quick confirmation.

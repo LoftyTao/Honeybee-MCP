@@ -260,3 +260,59 @@ For most requests, follow this sequence:
 - Prefer unified buses over legacy object-specific tool names.
 - `visualization` is a read-only export tool and should not be treated as part of the model persistence chain.
 - Use sub-skills for concrete call shapes, arguments, return fields, and examples.
+
+## Common Pitfalls
+
+These are frequent mistakes that lead to failed or unexpected results:
+
+1. **Forgetting `target_type`**: Every `query`, `apply`, and `add` call requires an explicit `target_type`. Omitting it or mismatching it with `identifiers` causes silent failures.
+2. **Resource creation order**: Energy schedule resources have strict dependencies: `ScheduleTypeLimit` → `ScheduleDay` → `ScheduleRuleset`. Creating them out of order will fail with a "not found" error.
+3. **Deleting referenced resources**: Using `remove` on a schedule, modifier, or modifier set that is still assigned to a room or face will be **blocked**. Query references first, reassign or unassign, then delete.
+4. **Applying to wrong scope**: Passing room identifiers when `target_type="face"` is expected (or vice versa) will result in zero matched targets.
+5. **Missing model load**: All buses require a loaded model. Calling any tool before `load_model` returns `"No model loaded"`.
+6. **Assuming face identifiers**: Face and aperture identifiers are auto-generated and non-obvious. Always `query` first to discover them rather than guessing.
+
+## Multi-Step Composition
+
+Complex user requests typically require chaining multiple tools. Follow this template:
+
+### Pattern: Create-and-Assign Resource
+
+```
+1. query → confirm target rooms/faces exist
+2. search_properties → check if a library resource already fits
+3. add → create custom resource if needed (respect dependency order)
+4. apply → assign resource to targets
+5. query → verify the assignment
+6. save_model or version_control → persist
+```
+
+### Pattern: Geometry Reset-and-Rebuild
+
+```
+1. query → discover current faces, apertures, shades
+2. version_control("save") → checkpoint before destructive edits
+3. remove → clear existing geometry (apertures, shades, etc.)
+4. add → rebuild with new parameters
+5. apply → assign properties to new geometry
+6. query → verify final state
+```
+
+### Pattern: Exploratory Inspection
+
+```
+1. query(target_type="model") → get model overview
+2. query(target_type="room", output_mode="list") → enumerate rooms
+3. query(target_type="face", identifiers=[...]) → drill into specific faces
+4. query with Energy/Radiance nested paths → inspect attached properties
+```
+
+## Error Recovery
+
+When a tool returns `success=False` or `status="error"`:
+
+1. **Read `error` and `hint`** fields — they usually contain actionable guidance.
+2. **Check `available_operations`** — returned when an unknown operation string is passed.
+3. **Check `missing`** — returned by `query` when some identifiers were not found.
+4. **Check `blocked`** — returned by `remove` when a resource is still referenced.
+5. **Retry after correction** — fix the root cause (load model, fix identifier, create dependency) and retry the same call.

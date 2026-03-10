@@ -68,9 +68,12 @@ Use `options` for:
 - `remove(operation="room_shades", identifiers=[...], options={...})`
 - `remove(operation="process_loads", identifiers=[...], options={...})`
 
-Use `options` for:
-- `indoor_shades`
-- `outdoor_shades`
+Room shades `options`:
+- `indoor_shades: bool`
+- `outdoor_shades: bool`
+
+Process loads `options`:
+- `process_ids: list` — List of process load identifiers to delete from the room. Omit to delete all process loads from the room.
 
 ### Resource-aware cleanup
 - `remove(operation="schedule", identifiers=[...])`
@@ -114,12 +117,20 @@ remove(
 )
 ```
 
-### Remove process loads from a room
+### Remove specific process loads from a room
 ```python
 remove(
     operation="process_loads",
     identifiers=["Room_1"],
-    options={"process_ids": ["Process_A"]}
+    options={"process_ids": ["Process_A", "Process_B"]}
+)
+```
+
+### Remove all process loads from a room
+```python
+remove(
+    operation="process_loads",
+    identifiers=["Room_1"]
 )
 ```
 
@@ -131,6 +142,23 @@ remove(operation="schedule", identifiers=["Office_Occ_Schedule"])
 ### Remove a sensor grid
 ```python
 remove(operation="sensor_grid", identifiers=["Grid_01"])
+```
+
+### Resource deletion with blocked references
+
+When a resource is still referenced, deletion is blocked:
+
+```python
+# Step 1: Attempt deletion
+result = remove(operation="schedule", identifiers=["OfficeOccupancy"])
+# result may contain "blocked" with a list of referencing objects
+
+# Step 2: Reassign the referencing rooms/loads to a different schedule
+apply(operation="people", target_type="room", identifiers=["Room_1"],
+      values={"occupancy_schedule_identifier": "AlternativeSchedule"})
+
+# Step 3: Retry deletion
+remove(operation="schedule", identifiers=["OfficeOccupancy"])
 ```
 
 ### Query before delete

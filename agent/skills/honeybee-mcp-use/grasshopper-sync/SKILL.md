@@ -56,6 +56,9 @@ description: "Use when a task requires reading from, writing to, checking, or cl
 - `message: str`
 
 ### `cleanup_shared_memory_cache`
+**Description**
+Removes stale cache files from the shared-memory temp directory. Does not affect the active shared-memory model.
+
 **Args**
 - none
 
@@ -64,6 +67,15 @@ description: "Use when a task requires reading from, writing to, checking, or cl
 - `kept_files: int`
 - `removed_files: int`
 - optional `removed_details`
+
+## Auto-Save Behavior
+
+When a model is loaded from shared memory, many edit operations (`apply`, `add`, `remove`) will **automatically write the model back** to shared memory after each operation. This is indicated by the `auto_save` field in the operation's return value.
+
+This means:
+- **Grasshopper picks up changes immediately** without a manual `save_model_to_shared_memory` call.
+- Manual save is only needed when: the model was loaded from file (not shared memory), or auto-save was not triggered.
+- The `auto_save` field contains `{"shared_memory": True, "name": "..."}` when writeback occurred.
 
 ## Examples
 
@@ -77,6 +89,8 @@ load_model_from_shared_memory(name="hb_model_shared")
 ```python
 load_model_from_shared_memory()
 query(target_type="model", fields=["identifier", "rooms"])
+# ... make edits (auto_save handles writeback)
+# OR manually write back:
 save_model_to_shared_memory()
 ```
 
@@ -84,7 +98,9 @@ save_model_to_shared_memory()
 ```python
 load_model_from_shared_memory()
 add(operation="schedule_ruleset", target_type="model", params={...})
-apply(operation="people", target_type="room", identifiers=["Room_1"], values={"occupancy_schedule_identifier": "CustomSchedule"})
+apply(operation="people", target_type="room", identifiers=["Room_1"],
+      values={"occupancy_schedule_identifier": "CustomSchedule"})
+# auto_save writeback includes the new schedule resource
 ```
 
 If the model source is shared memory, many edit operations already write back automatically through `auto_save`.
@@ -101,3 +117,4 @@ cleanup_shared_memory_cache()
 - If `cleared=True`, shared-memory clear state was detected.
 - Use `hint` from save results when instructing a user how to reconnect Reader/Writer components.
 - Custom schedules, constructions, modifiers, modifier sets, sensor grids, and views that are part of serialized model data are preserved in shared-memory writeback.
+- Check `auto_save` in edit operation returns to confirm whether writeback already happened.

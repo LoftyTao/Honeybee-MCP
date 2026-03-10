@@ -20,17 +20,33 @@ description: "Use when a task requires inspecting door properties or deleting do
 Use for door inspection, door counts, geometric properties, and related shade relationships.
 
 **Args**
-- `target_type: str`
+- `target_type: str` — Use `"door"`
 - `identifiers: list | None = None`
 - `fields: list | None = None`
 - `output_mode: str = "records"`
 
-**Returns**
-- `success: bool`
-- `target_type: str`
-- `count: int` when relevant
-- `data: dict | list`
-- `missing: list`
+**Available fields for doors**
+
+| Field | Description |
+|-------|-------------|
+| `identifier` | Door identifier |
+| `display_name` | Display name |
+| `boundary_condition` | Boundary condition string |
+| `is_glass` | Whether the door is glass |
+| `is_exterior` | Whether the door is exterior |
+| `has_parent` | Whether the door has a parent |
+| `parent` | Parent face identifier |
+| `top_level_parent` | Top-level parent (room) identifier |
+| `vertices` | Vertex coordinates |
+| `normal` | Normal vector |
+| `center` | Center point |
+| `area` | Area (m²) |
+| `perimeter` | Perimeter (m) |
+| `tilt` | Tilt angle (degrees) |
+| `altitude` | Altitude angle |
+| `azimuth` | Azimuth from north (degrees) |
+| `indoor_shades` | Indoor shade identifiers |
+| `outdoor_shades` | Outdoor shade identifiers |
 
 ### `remove`
 **Description**
@@ -63,7 +79,8 @@ query(
 query(
     target_type="door",
     identifiers=["Door_1"],
-    fields=["identifier", "boundary_condition", "is_glass", "area", "parent"]
+    fields=["identifier", "boundary_condition", "is_glass", "area",
+            "parent", "top_level_parent", "azimuth"]
 )
 ```
 
@@ -71,7 +88,8 @@ query(
 ```python
 query(
     target_type="door",
-    fields=["identifier", "is_glass", "boundary_condition", "area"],
+    fields=["identifier", "is_glass", "boundary_condition", "area",
+            "tilt", "azimuth", "parent"],
     output_mode="list"
 )
 ```
