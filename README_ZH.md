@@ -141,7 +141,30 @@ cd Honeybee-MCP
 
 AI Agent 会自动完成虚拟环境创建、依赖安装和 MCP 配置。这是最快的上手路径。
 
-### 3. 手动安装（备选）
+### 3. AI Agent Skill 自动安装指南（提升工具调用能力）
+
+本项目在 `agent/skills/` 目录下包含了专门的“技能”（规则）文档，用于教导 AI Agent 如何更高效地调用 Honeybee-MCP 工具。
+
+**Agent 安装指令：**
+在执行自动安装程序时，AI Agent 应将相关的技能文档复制到当前 IDE/CLI 所支持的项目级自定义技能（Skills）配置位置。具体工具对应的安装路径和调用方式参考下表：
+
+| 工具 (Tool) | 类型 (Type) | 调用方式示例 (Invocation Example) | 存放路径 (Path) |
+|-------------|-------------|-----------------------------------|-----------------|
+| **Claude Code** | CLI | `>> /skill-name help me...` | `.claude/skills/` |
+| **Gemini CLI** | CLI | `Use skill-name...` | `.gemini/skills/` |
+| **Codex CLI** | CLI | `Use skill-name...` | `.codex/skills/` |
+| **Kiro CLI** | CLI | (自动) 技能按需加载 | 全局: `~/.kiro/skills/` <br> 工作区: `.kiro/skills/` |
+| **Kiro IDE** | IDE | `/skill-name` 或 (自动加载) | 全局: `~/.kiro/skills/` <br> 工作区: `.kiro/skills/` |
+| **Antigravity** | IDE | (Agent 模式) `Use skill...` | 全局: `~/.gemini/antigravity/skills/` <br> 工作区: `.agent/skills/` |
+| **Cursor** | IDE | `@skill-name` (在聊天内) | `.cursor/skills/` |
+| **Copilot** | Ext | (手动粘贴文本内容) | N/A |
+| **OpenCode** | CLI | `opencode run @skill-name` | `.agents/skills/` |
+| **AdaL CLI** | CLI | (自动) 技能按需加载 | `.adal/skills/` |
+
+*你可以这样向你的 Agent 发送初始提示语：*
+> “请把 `agent/skills/honeybee-mcp-use/` 下的所有文档自动安装到当前 AI 工具对应的 skills 配置目录中（例如 `.cursor/skills/` 等），以增强你处理 Honeybee 建模任务的能力。”
+
+### 4. 手动安装（备选）
 
 如果你更喜欢自己来：
 

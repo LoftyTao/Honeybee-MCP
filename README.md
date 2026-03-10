@@ -141,7 +141,30 @@ then create the MCP config file for this IDE.
 
 The AI agent will handle virtual environment creation, dependency installation, and MCP configuration automatically. This is the fastest way to get started.
 
-### 3. Manual setup (alternative)
+### 3. AI Agent Skill Installation (for better tool use)
+
+This project includes specialized "skills" (rules) in the `agent/skills/` directory that teach AI agents how to use the Honeybee-MCP tools more effectively. 
+
+**Instruction for AI Agents:**
+When performing an automatic setup, the AI agent should copy the relevant skill documentation into the appropriate skills directory supported by the user's specific AI IDE or CLI. Reference the table below for standard paths:
+
+| Tool | Type | Invocation Example | Path |
+|------|------|--------------------|------|
+| **Claude Code** | CLI | `>> /skill-name help me...` | `.claude/skills/` |
+| **Gemini CLI** | CLI | `Use skill-name...` | `.gemini/skills/` |
+| **Codex CLI** | CLI | `Use skill-name...` | `.codex/skills/` |
+| **Kiro CLI** | CLI | (Auto) Skills load on-demand | Global: `~/.kiro/skills/` <br> Workspace: `.kiro/skills/` |
+| **Kiro IDE** | IDE | `/skill-name` or (Auto) | Global: `~/.kiro/skills/` <br> Workspace: `.kiro/skills/` |
+| **Antigravity** | IDE | (Agent Mode) `Use skill...` | Global: `~/.gemini/antigravity/skills/` <br> Workspace: `.agent/skills/` |
+| **Cursor** | IDE | `@skill-name` (in Chat) | `.cursor/skills/` |
+| **Copilot** | Ext | (Paste content manually) | N/A |
+| **OpenCode** | CLI | `opencode run @skill-name` | `.agents/skills/` |
+| **AdaL CLI** | CLI | (Auto) Skills load on-demand | `.adal/skills/` |
+
+*Example instruction to give your agent:*
+> "Copy all the skill documentation from `agent/skills/honeybee-mcp-use/` and install them into the custom skills location for this AI tool (e.g. `.cursor/skills/`) to enhance your Honeybee modeling capabilities."
+
+### 4. Manual setup (alternative)
 
 If you prefer to do it yourself:
 
