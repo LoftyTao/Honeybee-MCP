@@ -186,3 +186,4 @@ AGENTS_ZH.md
 .codex
 .gitignore
 tests/
+.agents/
